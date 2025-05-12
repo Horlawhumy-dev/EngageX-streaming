@@ -1,0 +1,6 @@
+venv/
+.env
+*.pyc
+/migrations
+testdata.txt
+file_upload.py
