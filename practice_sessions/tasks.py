@@ -6,14 +6,14 @@ from .sentiment_analysis import (
     ai_audience_question,
 )
 
-@shared_task(queue="transcription")
+@shared_task
 def transcribe_audio_task(audio_path):
     return transcribe_audio(audio_path)
 
-@shared_task(queue="analysis")
+@shared_task
 def analyze_results_task(transcript, video_path, audio_path):
     return analyze_results(transcript, video_path, audio_path)
 
-@shared_task(queue="ai_question")
+@shared_task
 def ai_audience_question_task(transcript):
     return ai_audience_question(transcript)
