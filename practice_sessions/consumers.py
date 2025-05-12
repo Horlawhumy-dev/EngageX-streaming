@@ -49,6 +49,11 @@ from .sentiment_analysis import analyze_results, transcribe_audio, ai_audience_q
 from practice_sessions.models import PracticeSession, SessionChunk, ChunkSentimentAnalysis
 from practice_sessions.serializers import SessionChunkSerializer, ChunkSentimentAnalysisSerializer # PracticeSessionSerializer might not be directly needed here
 from django.contrib.auth import get_user_model # Import to get the User model
+from .tasks import (
+    transcribe_audio_task,
+    analyze_results_task,
+    ai_audience_question_task,
+)
 
 User = get_user_model() # Get the active user model
 
@@ -355,7 +360,11 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
                     transcription_start_time = time.time()
                     try:
                         # Assuming transcribe_audio returns the transcript string or None on failure
-                        chunk_transcript = await asyncio.to_thread(transcribe_audio, audio_path)
+                        chunk_transcript = await asyncio.to_thread(
+                            lambda: transcribe_audio_task.delay(audio_path).get(timeout=60)
+                        )
+
+                        # chunk_transcript = await asyncio.to_thread(transcribe_audio, audio_path)
                         print(f"WS: Single chunk Transcription Result: {chunk_transcript} after {time.time() - transcription_start_time:.2f} seconds")
 
                         # ==== audience question logic GOES HERE ====
@@ -564,8 +573,11 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
                     # Using asyncio.to_thread for blocking OpenAI/Analysis call
                     # Pass the combined_transcript_text, video_path of the first chunk, and the combined_audio_path
                     # This replicates the call signature from the working version
-                    analysis_result = await asyncio.to_thread(analyze_results, combined_transcript_text,
-                                                              window_paths[0], combined_audio_path)
+                    analysis_result = await asyncio.to_thread(
+                        lambda: analyze_results_task.delay(combined_transcript_text, window_paths[0], combined_audio_path).get(timeout=60)  # Timeout for the task
+                    )
+                    # analysis_result = await asyncio.to_thread(analyze_results, combined_transcript_text,
+                    #                                           window_paths[0], combined_audio_path)
                     print(
                         f"WS: Analysis Result: {analysis_result} after {time.time() - analysis_start_time:.2f} seconds")
 
@@ -874,7 +886,11 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
         print("WS: Calling ai_audience_question...")
         try:
             # Call the synchronous ai_audience_question function in a thread
-            question = await asyncio.to_thread(ai_audience_question, transcript)
+            # question = await asyncio.to_thread(ai_audience_question, transcript)
+
+            question = await asyncio.to_thread(
+                lambda: ai_audience_question_task.delay(transcript).get(timeout=30)
+            )
 
             if question:
                 print(f"WS: Generated AI audience question: {question}")

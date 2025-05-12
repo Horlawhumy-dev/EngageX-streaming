@@ -334,3 +334,7 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes

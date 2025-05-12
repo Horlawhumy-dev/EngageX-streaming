@@ -1,0 +1,1 @@
+celery -A EngageX_Streaming worker --loglevel=info
