@@ -47,12 +47,13 @@ from practice_sessions.serializers import SessionChunkSerializer, \
     ChunkSentimentAnalysisSerializer  # PracticeSessionSerializer might not be directly needed here
 
 # Ensure Django settings are configured
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "EngageX.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "EngageX_Streaming.settings")
 django.setup()
 
 # Initialize OpenAI client
 # Ensure OPENAI_API_KEY is set in your environment
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+print(f"WS: OpenAI API Key: {openai.api_key}")  # Log the API key for debugging (remove in production)
 client = openai.OpenAI() if openai.api_key else None  # Initialize client only if API key is available
 
 # Initialize S3 client

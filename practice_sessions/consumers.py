@@ -58,7 +58,7 @@ from .tasks import (
 User = get_user_model() # Get the active user model
 
 # Ensure Django settings are configured
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "EngageX.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "EngageX_Streaming.settings")
 django.setup()
 
 # Initialize OpenAI client

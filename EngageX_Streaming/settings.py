@@ -124,6 +124,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     "https://api.engagexai.io",
     "http://localhost:3000",
+    "http://localhost:5500"
 ]
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

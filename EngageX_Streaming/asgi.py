@@ -13,7 +13,7 @@ from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "EngageX.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "EngageX._Streaming.settings")
 django.setup()
 
 import practice_sessions.routing  # After setup
