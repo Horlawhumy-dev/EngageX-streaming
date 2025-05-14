@@ -71,71 +71,71 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ECR_REPOSITORY}}:latest
+          docker build -t practice-session .
+          docker tag practice-session:$IMAGE_TAG $ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Push Docker image to ECR
         run: |
-          docker push ${{ECR_REPOSITORY}}:latest
+          docker push $ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.6
+      # - name: Set up Terraform
+      #   uses: hashicorp/setup-terraform@v3
+      #   with:
+      #     terraform_version: 1.6.6
 
-      - name: Terraform Init
-        working-directory: ./infra
-        run: terraform init
+      # - name: Terraform Init
+      #   working-directory: ./infra
+      #   run: terraform init
 
-      - name: Terraform Plan
-        working-directory: ./infra
-        run: terraform plan
+      # - name: Terraform Plan
+      #   working-directory: ./infra
+      #   run: terraform plan
 
-            - name: Terraform Apply
-        working-directory: ./infra
-        run: terraform apply -auto-approve
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: latest
+      #       - name: Terraform Apply
+      #   working-directory: ./infra
+      #   run: terraform apply -auto-approve
+      #   env:
+      #     AWS_REGION: ${{ secrets.AWS_REGION }}
+      #     ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      #     IMAGE_TAG: latest
 
-          # PostgreSQL
-          POSTGRESQL_DATABASE_NAME: ${{ secrets.POSTGRESQL_DATABASE_NAME }}
-          POSTGRESQL_USERNAME: ${{ secrets.POSTGRESQL_USERNAME }}
-          POSTGRESQL_SERVER_NAME: ${{ secrets.POSTGRESQL_SERVER_NAME }}
-          POSTGRESQL_PASSWORD: ${{ secrets.POSTGRESQL_PASSWORD }}
-          PORT: 5432
+      #     # PostgreSQL
+      #     POSTGRESQL_DATABASE_NAME: ${{ secrets.POSTGRESQL_DATABASE_NAME }}
+      #     POSTGRESQL_USERNAME: ${{ secrets.POSTGRESQL_USERNAME }}
+      #     POSTGRESQL_SERVER_NAME: ${{ secrets.POSTGRESQL_SERVER_NAME }}
+      #     POSTGRESQL_PASSWORD: ${{ secrets.POSTGRESQL_PASSWORD }}
+      #     PORT: 5432
 
-          # OpenAI and Deepgram API Keys
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      #     # OpenAI and Deepgram API Keys
+      #     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      #     DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
 
-          # AWS SES Config
-          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
-          EMAIL_PORT: 587
-          EMAIL_USE_TLS: true
-          EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
-          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
-          DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
+      #     # AWS SES Config
+      #     EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+      #     EMAIL_PORT: 587
+      #     EMAIL_USE_TLS: true
+      #     EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+      #     EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+      #     DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
 
-          # AWS S3 Config
-          USE_S3: true
-          AWS_STORAGE_BUCKET_NAME: ${{ secrets.AWS_STORAGE_BUCKET_NAME }}
-          AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     # AWS S3 Config
+      #     USE_S3: true
+      #     AWS_STORAGE_BUCKET_NAME: ${{ secrets.AWS_STORAGE_BUCKET_NAME }}
+      #     AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-          # Intuit Config
-          INTUIT_VERIFIER_TOKEN: ${{ secrets.INTUIT_VERIFIER_TOKEN }}
-          INTUIT_CLIENT_ID: ${{ secrets.INTUIT_CLIENT_ID }}
-          INTUIT_CLIENT_SECRET: ${{ secrets.INTUIT_CLIENT_SECRET }}
-          NEW_INTUIT_REDIRECT_URI: ${{ secrets.NEW_INTUIT_REDIRECT_URI }}
-          INTUIT_ENVIRONMENT: ${{ secrets.INTUIT_ENVIRONMENT }}
+      #     # Intuit Config
+      #     INTUIT_VERIFIER_TOKEN: ${{ secrets.INTUIT_VERIFIER_TOKEN }}
+      #     INTUIT_CLIENT_ID: ${{ secrets.INTUIT_CLIENT_ID }}
+      #     INTUIT_CLIENT_SECRET: ${{ secrets.INTUIT_CLIENT_SECRET }}
+      #     NEW_INTUIT_REDIRECT_URI: ${{ secrets.NEW_INTUIT_REDIRECT_URI }}
+      #     INTUIT_ENVIRONMENT: ${{ secrets.INTUIT_ENVIRONMENT }}
 
-          # Stripe Config
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      #     # Stripe Config
+      #     STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      #     STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+      #     STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
 
-          # Redis
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+      #     # Redis
+      #     REDIS_URL: ${{ secrets.REDIS_URL }}
