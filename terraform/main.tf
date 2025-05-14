@@ -134,7 +134,7 @@ resource "aws_ecs_task_definition" "django" {
   container_definitions = jsonencode([
     {
       name      = "django"
-      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/practice-session:latest"
+      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
       essential = true
       portMappings = [{ containerPort = 80, hostPort = 80, protocol = "tcp" }]
       environment = [

@@ -1,7 +1,7 @@
 [
   {
     "name": "django",
-    "image": "266735827053.dkr.ecr.eu-north-1.amazonaws.com/practice-session:latest",
+    "image": "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming",
     "essential": true,
     "cpu": 2048,  // 2 vCPUs
     "memory": 4096,  // 4 GB of memory
@@ -37,7 +37,7 @@
     "command": [
       "/bin/bash",
       "-c",
-      "python manage.py runserver 0.0.0.0:8000 & celery -A EngageX_Streaming worker --loglevel=info --pool=prefork & celery -A EngageX_Streaming flower --loglevel=info & wait -n"
+      "python manage.py runserver 0.0.0.0:8000 & celery -A EngageX_Streaming worker --loglevel=info --pool=threads & celery -A EngageX_Streaming flower --loglevel=info & wait -n"
     ],
     "dependsOn": [
       {
