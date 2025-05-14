@@ -1307,7 +1307,6 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
                 return
             else:
                 print(f"WS: Video compiled successfully to: {compiled_video_path}")
-
             # 5. Upload compiled video to S3
             print(f"WS: Uploading compiled video to S3 for session {session_id}.")
             # Construct the S3 key for the compiled video
