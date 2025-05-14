@@ -140,7 +140,7 @@ resource "aws_ecs_task_definition" "django" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
-  container_definitions = file("container_definitions.json.tpl")
+  container_definitions = file("container_definitions.json")
 }
 
 resource "aws_ecs_service" "django" {
