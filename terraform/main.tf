@@ -235,10 +235,10 @@ resource "aws_appautoscaling_policy" "scale_up" {
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-  step_adjustment {
-    metric_interval_lower_bound = 0
-    scaling_adjustment          = 1
-  }
+  # step_adjustment {
+  #   metric_interval_lower_bound = 0
+  #   scaling_adjustment          = 1
+  # }
 }
 
 resource "aws_appautoscaling_policy" "scale_down" {
@@ -247,12 +247,12 @@ resource "aws_appautoscaling_policy" "scale_down" {
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-  cooldown           = 300
+  # cooldown           = 300
 
-  step_adjustment {
-    metric_interval_upper_bound = 0
-    scaling_adjustment          = -1
-  }
+  # step_adjustment {
+  #   metric_interval_upper_bound = 0
+  #   scaling_adjustment          = -1
+  # }
 }
 
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
