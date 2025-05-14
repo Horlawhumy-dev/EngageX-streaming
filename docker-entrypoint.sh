@@ -16,7 +16,7 @@
 #!/bin/bash
 python manage.py migrate
 python manage.py collectstatic --noinput
-gunicorn EngageX_Streaming.wsgi:application --bind 0.0.0.0:80
+gunicorn EngageX_Streaming.wsgi:application --bind 0.0.0.0:8000
 
 # Start Celery worker
 celery -A EngageX_Streaming worker --loglevel=info --pool=threads

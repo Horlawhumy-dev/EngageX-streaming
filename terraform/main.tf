@@ -66,7 +66,7 @@ resource "aws_lb" "main" {
 
 resource "aws_lb_target_group" "django_tg" {
   name     = "django-tg"
-  port     = 80
+  port     = 8000
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
   target_type = "ip"
@@ -316,7 +316,7 @@ resource "aws_ecs_task_definition" "django" {
       container_port   = 80
     }
 
-    desired_count = 1
+    desired_count = 2
   }
 
   resource "aws_iam_role" "ecs_task_execution_role" {
