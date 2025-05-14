@@ -151,3 +151,4 @@ services:
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
 
       - REDIS_URL=${REDIS_URL}
+      
