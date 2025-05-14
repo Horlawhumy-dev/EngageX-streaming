@@ -1,7 +1,7 @@
 [
   {
     "name": "django",
-    "image": "${image}",
+    "image": "266735827053.dkr.ecr.eu-north-1.amazonaws.com/practice-session:latest",
     "essential": true,
     "cpu": 2048,  // 2 vCPUs
     "memory": 4096,  // 4 GB of memory
