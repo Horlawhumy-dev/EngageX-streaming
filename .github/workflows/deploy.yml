@@ -70,14 +70,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # - name: Build Docker image
-      #   run: |
-      #     docker build -t practice-session .
-      #     docker tag practice-session:$IMAGE_TAG $ECR_REPOSITORY:$IMAGE_TAG
+      - name: Build Docker image
+        run: |
+          docker build -t practice-session .
+          docker tag practice-session:$IMAGE_TAG $ECR_REPOSITORY:$IMAGE_TAG
 
-      # - name: Push Docker image to ECR
-      #   run: |
-      #     docker push $ECR_REPOSITORY:$IMAGE_TAG
+      - name: Push Docker image to ECR
+        run: |
+          docker push $ECR_REPOSITORY:$IMAGE_TAG
           
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -99,6 +99,12 @@ jobs:
             echo "Exporting TF_VAR_$var"
             echo "TF_VAR_$var=${!var}" >> $GITHUB_ENV
           done
+
+      - name: Clean Terraform Cache
+        working-directory: ./terraform
+        run: |
+          echo "Cleaning Terraform cache..."
+          rm -rf .terraform .terraform.lock.hcl
 
       - name: Terraform Init
         working-directory: ./terraform
