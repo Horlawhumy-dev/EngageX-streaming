@@ -112,7 +112,7 @@ jobs:
 
       # - name: Terraform refresh
       #   working-directory: ./terraform
-      #   run: terraform refresh
+      #   run: terraform refresh 
 
       - name: Terraform Plan
         working-directory: ./terraform
