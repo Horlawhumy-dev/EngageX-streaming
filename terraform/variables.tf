@@ -1,31 +1,31 @@
-variable "aws_region" {
+variable "AWS_REGION" {
   description = "The AWS region to deploy resources"
   type        = string
   default     = "eu-north-1"  
 }
 
-variable "postgresql_database_name" {}
-variable "postgresql_username" {}
-variable "postgresql_server_name" {}
-variable "postgresql_password" {}
-variable "openai_api_key" {}
-variable "deepgram_api_key" {}
-variable "email_host" {}
-variable "email_host_user" {}
-variable "email_host_password" {}
-variable "default_from_email" {}
-variable "aws_storage_bucket_name" {}
-variable "aws_s3_region_name" {}
-variable "aws_access_key_id" {}
-variable "aws_secret_access_key" {}
-variable "intuit_verifier_token" {}
-variable "intuit_client_id" {}
-variable "intuit_client_secret" {}
-variable "new_intuit_redirect_uri" {}
-variable "intuit_environment" {}
-variable "stripe_secret_key" {}
-variable "stripe_publishable_key" {}
-variable "stripe_webhook_secret" {}
-variable "redis_url" {
+variable "POSTGRESQL_DATABASE_NAME" {}
+variable "POSTGRESQL_USERNAME" {}
+variable "POSTGRESQL_SERVER_NAME" {}
+variable "POSTGRESQL_PASSWORD" {}
+variable "OPENAI_API_KEY" {}
+variable "DEEPGRAM_API_KEY" {}
+variable "EMAIL_HOST" {}
+variable "EMAIL_HOST_USER" {}
+variable "EMAIL_HOST_PASSWORD" {}
+variable "DEFAULT_FROM_EMAIL" {}
+variable "AWS_STORAGE_BUCKET_NAME" {}
+variable "AWS_S3_REGION_NAME" {}
+variable "AWS_ACCESS_KEY_ID" {}
+variable "AWS_SECRET_ACCESS_KEY" {}
+variable "INTUIT_VERIFIER_TOKEN" {}
+variable "INTUIT_CLIENT_ID" {}
+variable "INTUIT_CLIENT_SECRET" {}
+variable "NEW_INTUIT_REDIRECT_URI" {}
+variable "INTUIT_ENVIRONMENT" {}
+variable "STRIPE_SECRET_KEY" {}
+variable "STRIPE_PUBLISHABLE_KEY" {}
+variable "STRIPE_WEBHOOK_SECRET" {}
+variable "REDIS_URL" {
   default = "redis://redis:6379/0"
 }
