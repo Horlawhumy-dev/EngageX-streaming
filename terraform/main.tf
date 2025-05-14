@@ -66,7 +66,7 @@ resource "aws_lb" "main" {
 
 resource "aws_lb_target_group" "django_tg" {
   name     = "django-tg"
-  port     = 80
+  port     = 8000
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
   target_type = "ip"
@@ -192,7 +192,7 @@ resource "aws_ecs_task_definition" "django" {
 
     {
       name      = "celery-worker"
-      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
+      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/celery:latest"
       essential = false
       environment = [
           { name = "POSTGRESQL_DATABASE_NAME", value = var.POSTGRESQL_DATABASE_NAME },
@@ -235,7 +235,7 @@ resource "aws_ecs_task_definition" "django" {
     # Flower container
     {
       name      = "flower"
-      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
+      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/flower:latest"
       essential = false
       portMappings = [
         {
