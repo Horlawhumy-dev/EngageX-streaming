@@ -1,5 +1,4 @@
 name: Deploy Celery + Flower to ECS
-
 on:
   push:
     branches:
