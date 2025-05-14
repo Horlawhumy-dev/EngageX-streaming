@@ -83,6 +83,34 @@ resource "aws_lb_listener" "django_listener" {
   }
 }
 
+# Create Internet Gateway
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+}
+
+# Create Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+# Associate Route Table with Subnet A
+resource "aws_route_table_association" "subnet_a" {
+  subnet_id      = aws_subnet.subnet_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+# Associate Route Table with Subnet B
+resource "aws_route_table_association" "subnet_b" {
+  subnet_id      = aws_subnet.subnet_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+
 resource "aws_ecs_cluster" "main" {
   name = "django-cluster"
 }
@@ -201,7 +229,7 @@ resource "aws_ecs_service" "django" {
 }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
+  name = "ecsTaskExecutionRole-custom"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
