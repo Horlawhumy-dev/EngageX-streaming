@@ -276,6 +276,9 @@ resource "aws_appautoscaling_policy" "scale_up" {
       scaling_adjustment          = 1
     }
   }
+
+  depends_on = [aws_appautoscaling_target.django]
+  
 }
 
 resource "aws_appautoscaling_policy" "scale_down" {
@@ -295,6 +298,8 @@ resource "aws_appautoscaling_policy" "scale_down" {
       scaling_adjustment          = -1
     }
   }
+
+  depends_on = [aws_appautoscaling_target.django]
 }
 
 
