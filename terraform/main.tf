@@ -1,68 +1,3 @@
-# provider "aws" {
-#   region = var.aws_region
-# }
-
-# resource "aws_ecs_cluster" "main" {
-#   name = "celery-flower-cluster"
-# }
-
-# resource "aws_ecr_repository" "celery_app" {
-#   name = "celery-app-repo"
-# }
-
-# resource "aws_iam_role" "ecs_task_execution_role" {
-#   name = "ecsTaskExecutionRole"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action    = "sts:AssumeRole"
-#         Effect    = "Allow"
-#         Principal = {
-#           Service = "ecs-tasks.amazonaws.com"
-#         }
-#       }
-#     ]
-#   })
-# }
-
-# resource "aws_ecs_task_definition" "celery_flower_task" {
-#   family                   = "celery-flower-task"
-#   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
-#   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-#   network_mode             = "awsvpc"
-#   cpu                      = "256"
-#   memory                   = "1024"
-#   requires_compatibilities = ["FARGATE"]
-  
-#   container_definitions = jsonencode([
-#     {
-#       name      = "celery"
-#       image     = "${aws_ecr_repository.celery_app.repository_url}:${var.image_tag}"
-#       essential = true
-#       environment = [
-#         { name = "REDIS_URL", value = var.redis_url }
-#       ]
-#       command = [
-#         "celery", "-A", "EngageX_Streaming", "worker", "--loglevel=info", "--pool=threads", "--broker=${var.redis_url}"
-#       ]
-#     },
-#     {
-#       name      = "flower"
-#       image     = "${aws_ecr_repository.celery_app.repository_url}:${var.image_tag}"
-#       essential = true
-#       environment = [
-#         { name = "REDIS_URL", value = var.redis_url }
-#       ]
-#       command = [
-#         "celery", "-A", "EngageX_Streaming", "flower", "--port=5555", "--broker=${var.redis_url}"
-#       ]
-#     }
-#   ])
-# }
-
-
-
 terraform {
   backend "s3" {
     bucket         = "engagex-user-content-1234"
@@ -191,17 +126,56 @@ resource "aws_ecs_task_definition" "task_definition" {
   family                   = var.ecs_task_family
   network_mode             = "awsvpc"
   execution_role_arn       = data.aws_iam_role.ecs_task_execution_role.arn
-  container_definitions    = templatefile("${path.module}/container_definitions.json.tpl", {
-    container_name     = "django"
-    image              = var.image
-    redis_image        = "redis:latest"
-    container_port     = var.container_port
-    region             = var.aws_region
-    ecs_service_name   = var.ecs_service_name  
-  })
-  requires_compatibilities  = ["FARGATE"]
-  memory                    = "4096" // 4GB
-  cpu                       = "4096" // 4 vCPU
+  requires_compatibilities = ["FARGATE"]
+  memory                   = "4096"
+  cpu                      = "1024"
+
+  container_definitions = jsonencode([
+    {
+      name      = "practice-session"
+      image     = var.image
+      cpu       = 768
+      memory    = 3072
+      essential = true
+      portMappings = [
+        {
+          containerPort = 8000
+          hostPort      = 8000
+        }
+      ]
+      environment = [
+        {
+          name  = "CELERY_BROKER_URL"
+          value = "redis://redis:6379/0"
+        },
+        {
+          name  = "CELERY_RESULT_BACKEND"
+          value = "redis://redis:6379/0"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_log_group.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    },
+    {
+      name      = "redis"
+      image     = "redis:latest"
+      cpu       = 256
+      memory    = 1024
+      essential = true
+      portMappings = [
+        {
+          containerPort = 6379
+          hostPort      = 6379
+        }
+      ]
+    }
+  ])
 
   depends_on = [aws_cloudwatch_log_group.ecs_log_group]
 }
@@ -220,3 +194,4 @@ resource "aws_ecs_service" "ecs_service" {
     assign_public_ip = true
   }
 }
+
