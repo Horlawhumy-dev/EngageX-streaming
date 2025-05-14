@@ -9,7 +9,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-north-1"
+  region = "us-west-1"
 }
 
 resource "aws_vpc" "main" {
@@ -21,13 +21,13 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "subnet_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = "eu-north-1a"
+  availability_zone = "us-west-1a"
 }
 
 resource "aws_subnet" "subnet_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.2.0/24"
-  availability_zone = "eu-north-1b"
+  availability_zone = "us-west-1b"
 }
 
 resource "aws_security_group" "ecs_sg" {
@@ -136,7 +136,7 @@ resource "aws_ecs_task_definition" "django" {
   container_definitions = jsonencode([
     {
       name      = "django"
-      image     = "266735827053.dkr.ecr.eu-north-1.amazonaws.com/practice-session:latest"
+      image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/practice-session:latest"
       essential = true
       portMappings = [{ containerPort = 80, hostPort = 80, protocol = "tcp" }]
       environment = [
@@ -169,8 +169,8 @@ resource "aws_ecs_task_definition" "django" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
-          "awslogs-stream"        = aws_cloudwatch_log_stream.django_log_stream.name
-          "awslogs-region"        = "eu-north-1"
+          "awslogs-stream-prefix"        = aws_cloudwatch_log_stream.django_log_stream.name
+          "awslogs-region"        = "us-west-1"
           "awslogs-create-group"  = "true"
         }
       }
@@ -184,8 +184,8 @@ resource "aws_ecs_task_definition" "django" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
-          "awslogs-stream"        = "flower-stream"
-          "awslogs-region"        = "eu-north-1"
+          "awslogs-stream-prefix"        = "flower-stream"
+          "awslogs-region"        = "us-west-1"
           "awslogs-create-group"  = "true"
         }
       }
@@ -198,8 +198,8 @@ resource "aws_ecs_task_definition" "django" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
-          "awslogs-stream"        = "redis-stream"
-          "awslogs-region"        = "eu-north-1"
+          "awslogs-stream-prefix"        = "redis-stream"
+          "awslogs-region"        = "us-west-1"
           "awslogs-create-group"  = "true"
         }
       }
@@ -286,17 +286,18 @@ resource "aws_appautoscaling_policy" "scale_down" {
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_name                = "high-cpu-alarm"
   comparison_operator       = "GreaterThanThreshold"
-  evaluation_periods        = "1"
+  evaluation_periods        = 2
   metric_name               = "CPUUtilization"
   namespace                 = "AWS/ECS"
-  period                    = "60"
+  period                    = 60
   statistic                 = "Average"
-  threshold                = "80"
-  alarm_actions             = [aws_appautoscaling_policy.scale_up.arn]
+  threshold                 = 90
+  alarm_description         = "Alarm when CPU exceeds 70%"
   dimensions = {
     ClusterName = aws_ecs_cluster.main.name
     ServiceName = aws_ecs_service.django.name
   }
+  alarm_actions             = [aws_appautoscaling_policy.scale_up.arn]
 }
 
 resource "aws_cloudwatch_metric_alarm" "low_cpu" {
