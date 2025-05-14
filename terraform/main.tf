@@ -145,6 +145,13 @@ resource "aws_ecs_task_definition" "django" {
       name      = "django"
       image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
       essential = true
+      portMappings = [
+        {
+          containerPort = 80,
+          hostPort = 80,
+          protocol = "tcp"
+        }
+      ],
       environment = [
           { name = "POSTGRESQL_DATABASE_NAME", value = var.POSTGRESQL_DATABASE_NAME },
           { name = "POSTGRESQL_USERNAME", value = var.POSTGRESQL_USERNAME },
@@ -230,6 +237,13 @@ resource "aws_ecs_task_definition" "django" {
       name      = "flower"
       image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
       essential = false
+      portMappings = [
+        {
+          containerPort = 5555,
+          hostPort = 5555,
+          protocol = "tcp"
+        }
+      ],
       environment = [
           { name = "POSTGRESQL_DATABASE_NAME", value = var.POSTGRESQL_DATABASE_NAME },
           { name = "POSTGRESQL_USERNAME", value = var.POSTGRESQL_USERNAME },
@@ -257,6 +271,7 @@ resource "aws_ecs_task_definition" "django" {
           { name = "AWS_REGION", value = var.AWS_REGION }
         ]
       command = ["/app/docker-entrypoint.sh"]
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
