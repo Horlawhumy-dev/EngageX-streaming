@@ -1,5 +1,4 @@
 [
-    # Django container
   {
     name      = "django"
     image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
@@ -42,7 +41,6 @@
     }
   }
 
-  # Celery worker container
   {
     name      = "celery-worker"
     image     = "266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest"
@@ -128,7 +126,6 @@
     }
   }
 
-  # Redis container
   {
     name      = "redis"
     image     = "redis:latest"
