@@ -1,4 +1,3 @@
-
 terraform {
   backend "s3" {
     bucket         = "engagex-user-content-1234"
@@ -110,7 +109,6 @@ resource "aws_route_table_association" "subnet_b" {
   route_table_id = aws_route_table.public.id
 }
 
-
 resource "aws_ecs_cluster" "main" {
   name = "django-cluster"
 }
@@ -169,7 +167,7 @@ resource "aws_ecs_task_definition" "django" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
-          "awslogs-stream-prefix"        = aws_cloudwatch_log_stream.django_log_stream.name
+          "awslogs-stream-prefix" = aws_cloudwatch_log_stream.django_log_stream.name
           "awslogs-region"        = "us-west-1"
           "awslogs-create-group"  = "true"
         }
@@ -184,7 +182,7 @@ resource "aws_ecs_task_definition" "django" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
-          "awslogs-stream-prefix"        = "flower-stream"
+          "awslogs-stream-prefix" = "flower-stream"
           "awslogs-region"        = "us-west-1"
           "awslogs-create-group"  = "true"
         }
@@ -198,7 +196,7 @@ resource "aws_ecs_task_definition" "django" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
-          "awslogs-stream-prefix"        = "redis-stream"
+          "awslogs-stream-prefix" = "redis-stream"
           "awslogs-region"        = "us-west-1"
           "awslogs-create-group"  = "true"
         }
@@ -263,10 +261,17 @@ resource "aws_appautoscaling_policy" "scale_up" {
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-  # step_adjustment {
-  #   metric_interval_lower_bound = 0
-  #   scaling_adjustment          = 1
-  # }
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 300
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      scaling_adjustment          = 1
+    }
+  }
 }
 
 resource "aws_appautoscaling_policy" "scale_down" {
@@ -275,43 +280,48 @@ resource "aws_appautoscaling_policy" "scale_down" {
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-  # cooldown           = 300
 
-  # step_adjustment {
-  #   metric_interval_upper_bound = 0
-  #   scaling_adjustment          = -1
-  # }
-}
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 300
+    metric_aggregation_type = "Average"
 
-resource "aws_cloudwatch_metric_alarm" "high_cpu" {
-  alarm_name                = "high-cpu-alarm"
-  comparison_operator       = "GreaterThanThreshold"
-  evaluation_periods        = 2
-  metric_name               = "CPUUtilization"
-  namespace                 = "AWS/ECS"
-  period                    = 60
-  statistic                 = "Average"
-  threshold                 = 90
-  alarm_description         = "Alarm when CPU exceeds 70%"
-  dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.django.name
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = -1
+    }
   }
-  alarm_actions             = [aws_appautoscaling_policy.scale_up.arn]
 }
 
-resource "aws_cloudwatch_metric_alarm" "low_cpu" {
-  alarm_name                = "low-cpu-alarm"
-  comparison_operator       = "LessThanThreshold"
-  evaluation_periods        = "1"
-  metric_name               = "CPUUtilization"
-  namespace                 = "AWS/ECS"
-  period                    = "60"
-  statistic                 = "Average"
-  threshold                = "20"
-  alarm_actions             = [aws_appautoscaling_policy.scale_down.arn]
+
+resource "aws_cloudwatch_metric_alarm" "cpu_high" {
+  alarm_name = "cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods = 1
+  metric_name = "CPUUtilization"
+  namespace = "AWS/ECS"
+  period = 60
+  statistic = "Average"
+  threshold = 80
+  alarm_actions = [aws_appautoscaling_policy.scale_up.arn]
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.django.name
+  ClusterName = aws_ecs_cluster.main.name
+  ServiceName = aws_ecs_service.django.name
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_low" {
+  alarm_name = "cpu-low"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods = 1
+  metric_name = "CPUUtilization"
+  namespace = "AWS/ECS"
+  period = 60
+  statistic = "Average"
+  threshold = 20
+  alarm_actions = [aws_appautoscaling_policy.scale_down.arn]
+  dimensions = {
+  ClusterName = aws_ecs_cluster.main.name
+  ServiceName = aws_ecs_service.django.name
   }
 }
