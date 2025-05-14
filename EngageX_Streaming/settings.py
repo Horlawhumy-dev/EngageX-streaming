@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure-wfl*mho^tyaghxhwx4p^2u8)yl#gw+^ub&(=!m#=!x3rrqo1og
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [".elasticbeanstalk.com", "api.engagexai.io", "*"]
+ALLOWED_HOSTS = [".elasticbeanstalk.com", "api.engagexai.io", "django-lb-669636544.us-west-1.elb.amazonaws.com", "*"]
 
 # Application definition
 
