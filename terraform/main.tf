@@ -1,3 +1,4 @@
+
 terraform {
   backend "s3" {
     bucket         = "engagex-user-content-1234"
@@ -9,92 +10,42 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = "eu-north-1"
 }
 
-# Data Source for Availability Zones
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-# Data Source for Existing ECR Repository
-data "aws_ecr_repository" "app_repo" {
-  name = var.ecr_repository_name
-}
-
-# Data Source for Existing IAM Role
-data "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
-}
-
-# Create a VPC
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
-
-  tags = {
-    Name = "main_vpc"
-  }
 }
 
-# Create Public Subnets
-resource "aws_subnet" "public_subnets" {
-  count                   = 2
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public_subnet_${count.index}"
-  }
+resource "aws_subnet" "subnet_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "eu-north-1a"
 }
 
-# Internet Gateway
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "main_igw"
-  }
+resource "aws_subnet" "subnet_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "eu-north-1b"
 }
 
-# Route Table
-resource "aws_route_table" "public_rt" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "public_route_table"
-  }
-}
-
-# Route to Internet Gateway
-resource "aws_route" "default_route" {
-  route_table_id         = aws_route_table.public_rt.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.igw.id
-}
-
-# Associate Route Table with Subnets
-resource "aws_route_table_association" "public_rta" {
-  count          = length(aws_subnet.public_subnets)
-  subnet_id      = aws_subnet.public_subnets[count.index].id
-  route_table_id = aws_route_table.public_rt.id
-}
-
-# ECS Cluster
-resource "aws_ecs_cluster" "ecs_cluster" {
-  name = var.ecs_cluster_name
-}
-
-# Security Group for ECS Service
-resource "aws_security_group" "ecs_service_sg" {
-  vpc_id = aws_vpc.main.id
+resource "aws_security_group" "ecs_sg" {
+  name        = "ecs-sg"
+  description = "Allow inbound traffic"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 0
-    to_port     = 65535
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 5555
+    to_port     = 5555
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -105,93 +56,233 @@ resource "aws_security_group" "ecs_service_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
 
-  tags = {
-    Name = "ecs_service_sg"
+resource "aws_lb" "main" {
+  name               = "django-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.ecs_sg.id]
+  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+}
+
+resource "aws_lb_target_group" "django_tg" {
+  name     = "django-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+}
+
+resource "aws_lb_listener" "django_listener" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.django_tg.arn
   }
 }
 
-# Create CloudWatch Log Group for ECS tasks
-resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = "/ecs/${var.ecs_service_name}"
-  retention_in_days = 30
-
-  tags = {
-    Name = "${var.ecs_service_name}-log-group"
-  }
+resource "aws_ecs_cluster" "main" {
+  name = "django-cluster"
 }
 
-# ECS Task Definition
-resource "aws_ecs_task_definition" "task_definition" {
-  family                   = var.ecs_task_family
-  network_mode             = "awsvpc"
-  execution_role_arn       = data.aws_iam_role.ecs_task_execution_role.arn
+resource "aws_cloudwatch_log_group" "django_log_group" {
+  name = "/ecs/django"
+}
+
+resource "aws_cloudwatch_log_stream" "django_log_stream" {
+  name           = "django-stream"
+  log_group_name = aws_cloudwatch_log_group.django_log_group.name
+}
+
+resource "aws_ecs_task_definition" "django" {
+  family                   = "django-task"
   requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "4096"
   memory                   = "4096"
-  cpu                      = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
-      name      = "practice-session"
-      image     = var.image
-      cpu       = 768
-      memory    = 3072
+      name      = "django"
+      image     = "266735827053.dkr.ecr.eu-north-1.amazonaws.com/practice-session:latest"
       essential = true
-      portMappings = [
-        {
-          containerPort = 8000
-          hostPort      = 8000
-        }
-      ]
+      portMappings = [{ containerPort = 80, hostPort = 80, protocol = "tcp" }]
       environment = [
-        {
-          name  = "CELERY_BROKER_URL"
-          value = "redis://redis:6379/0"
-        },
-        {
-          name  = "CELERY_RESULT_BACKEND"
-          value = "redis://redis:6379/0"
-        }
-      ]
+        { name = "POSTGRESQL_DATABASE_NAME", value = "${{ secrets.POSTGRESQL_DATABASE_NAME }}" },
+        { name = "POSTGRESQL_USERNAME", value = "${{ secrets.POSTGRESQL_USERNAME }}" },
+        { name = "POSTGRESQL_SERVER_NAME", value = "${{ secrets.POSTGRESQL_SERVER_NAME }}" },
+        { name = "POSTGRESQL_PASSWORD", value = "${{ secrets.POSTGRESQL_PASSWORD }}" },
+        { name = "OPENAI_API_KEY", value = "${{ secrets.OPENAI_API_KEY }}" },
+        { name = "DEEPGRAM_API_KEY", value = "${{ secrets.DEEPGRAM_API_KEY }}" },
+        { name = "EMAIL_HOST", value = "${{ secrets.EMAIL_HOST }}" },
+        { name = "EMAIL_HOST_USER", value = "${{ secrets.EMAIL_HOST_USER }}" },
+        { name = "EMAIL_HOST_PASSWORD", value = "${{ secrets.EMAIL_HOST_PASSWORD }}" },
+        { name = "DEFAULT_FROM_EMAIL", value = "${{ secrets.DEFAULT_FROM_EMAIL }}" },
+        { name = "AWS_STORAGE_BUCKET_NAME", value = "${{ secrets.AWS_STORAGE_BUCKET_NAME }}" },
+        { name = "AWS_S3_REGION_NAME", value = "${{ secrets.AWS_S3_REGION_NAME }}" },
+        { name = "AWS_ACCESS_KEY_ID", value = "${{ secrets.AWS_ACCESS_KEY_ID }}" },
+        { name = "AWS_SECRET_ACCESS_KEY", value = "${{ secrets.AWS_SECRET_ACCESS_KEY }}" },
+        { name = "INTUIT_VERIFIER_TOKEN", value = "${{ secrets.INTUIT_VERIFIER_TOKEN }}" },
+        { name = "INTUIT_CLIENT_ID", value = "${{ secrets.INTUIT_CLIENT_ID }}" },
+        { name = "INTUIT_CLIENT_SECRET", value = "${{ secrets.INTUIT_CLIENT_SECRET }}" },
+        { name = "NEW_INTUIT_REDIRECT_URI", value = "${{ secrets.NEW_INTUIT_REDIRECT_URI }}" },
+        { name = "INTUIT_ENVIRONMENT", value = "${{ secrets.INTUIT_ENVIRONMENT }}" },
+        { name = "STRIPE_SECRET_KEY", value = "${{ secrets.STRIPE_SECRET_KEY }}" },
+        { name = "STRIPE_PUBLISHABLE_KEY", value = "${{ secrets.STRIPE_PUBLISHABLE_KEY }}" },
+        { name = "STRIPE_WEBHOOK_SECRET", value = "${{ secrets.STRIPE_WEBHOOK_SECRET }}" },
+        { name = "REDIS_URL", value = "${{ secrets.REDIS_URL }}", default =  "redis://redis:6379/0" }
+      ],
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs_log_group.name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
+          "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
+          "awslogs-stream"        = aws_cloudwatch_log_stream.django_log_stream.name
+          "awslogs-region"        = "eu-north-1"
+          "awslogs-create-group"  = "true"
         }
       }
     },
     {
-      name      = "redis"
-      image     = "redis:latest"
-      cpu       = 256
-      memory    = 1024
-      essential = true
-      portMappings = [
-        {
-          containerPort = 6379
-          hostPort      = 6379
+      name  = "flower"
+      image = "mher/flower"
+      portMappings = [{ containerPort = 5555, hostPort = 5555, protocol = "tcp" }]
+      environment = [{ name = "CELERY_BROKER_URL", value = "redis://redis:6379/0" }]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
+          "awslogs-stream"        = "flower-stream"
+          "awslogs-region"        = "eu-north-1"
+          "awslogs-create-group"  = "true"
         }
-      ]
+      }
+    },
+    {
+      name  = "redis"
+      image = "redis"
+      portMappings = [{ containerPort = 6379, hostPort = 6379, protocol = "tcp" }]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.django_log_group.name
+          "awslogs-stream"        = "redis-stream"
+          "awslogs-region"        = "eu-north-1"
+          "awslogs-create-group"  = "true"
+        }
+      }
     }
   ])
-
-  depends_on = [aws_cloudwatch_log_group.ecs_log_group]
 }
 
-# ECS Service
-resource "aws_ecs_service" "ecs_service" {
-  name            = var.ecs_service_name
-  cluster         = aws_ecs_cluster.ecs_cluster.id
-  task_definition = aws_ecs_task_definition.task_definition.arn
-  desired_count   = var.desired_count
+resource "aws_ecs_service" "django" {
+  name            = "django-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.django.arn
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = [for subnet in aws_subnet.public_subnets : subnet.id]
-    security_groups = [aws_security_group.ecs_service_sg.id]
+    subnets         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+    security_groups = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.django_tg.arn
+    container_name   = "django"
+    container_port   = 80
+  }
+
+  desired_count = 1
+}
+
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = { Service = "ecs-tasks.amazonaws.com" }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Auto Scaling Configuration
+resource "aws_appautoscaling_target" "django" {
+  max_capacity       = 10
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "scale_up" {
+  name               = "scale-up"
+  policy_type        = "StepScaling"
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+  step_adjustment {
+    metric_interval_lower_bound = 0
+    scaling_adjustment          = 1
   }
 }
 
+resource "aws_appautoscaling_policy" "scale_down" {
+  name               = "scale-down"
+  policy_type        = "StepScaling"
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.django.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+  cooldown           = 300
+
+  step_adjustment {
+    metric_interval_upper_bound = 0
+    scaling_adjustment          = -1
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu" {
+  alarm_name                = "high-cpu-alarm"
+  comparison_operator       = "GreaterThanThreshold"
+  evaluation_periods        = "1"
+  metric_name               = "CPUUtilization"
+  namespace                 = "AWS/ECS"
+  period                    = "60"
+  statistic                 = "Average"
+  threshold                = "80"
+  alarm_actions             = [aws_appautoscaling_policy.scale_up.arn]
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.django.name
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "low_cpu" {
+  alarm_name                = "low-cpu-alarm"
+  comparison_operator       = "LessThanThreshold"
+  evaluation_periods        = "1"
+  metric_name               = "CPUUtilization"
+  namespace                 = "AWS/ECS"
+  period                    = "60"
+  statistic                 = "Average"
+  threshold                = "20"
+  alarm_actions             = [aws_appautoscaling_policy.scale_down.arn]
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.django.name
+  }
+}

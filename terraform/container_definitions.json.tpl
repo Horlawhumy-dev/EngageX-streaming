@@ -1,51 +1,57 @@
 [
   {
-    "name": "${container_name}",
+    "name": "django",
     "image": "${image}",
     "essential": true,
+    "cpu": 2048,  // 2 vCPUs
+    "memory": 4096,  // 4 GB of memory
     "portMappings": [
       {
-        "containerPort": ${container_port},
-        "hostPort": ${container_port},
+        "containerPort": 8000,
+        "hostPort": 8000,
         "protocol": "tcp"
       }
     ],
-   "environment": [
-  {
-    "name": "DJANGO_SETTINGS_MODULE",
-    "value": "celery_example.settings"
-  },
-  {
-    "name": "CELERY_BROKER_URL",
-    "value": "redis://localhost:6379/0"
-  },
-  {
-    "name": "CELERY_RESULT_BACKEND",
-    "value": "redis://localhost:6379/0"
-  }
-],
+    "environment": [
+      {
+        "name": "DJANGO_SETTINGS_MODULE",
+        "value": "EngageX_Streaming.settings"
+      },
+      {
+        "name": "CELERY_BROKER_URL",
+        "value": "redis://localhost:6379/0"
+      },
+      {
+        "name": "CELERY_RESULT_BACKEND",
+        "value": "redis://localhost:6379/0"
+      }
+    ],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
         "awslogs-group": "/ecs/${ecs_service_name}",
         "awslogs-region": "${region}",
-        "awslogs-stream-prefix": "${container_name}"
+        "awslogs-stream-prefix": "django"
       }
     },
+    "command": [
+      "/bin/bash",
+      "-c",
+      "python manage.py runserver 0.0.0.0:8000 & celery -A EngageX_Streaming worker --loglevel=info --pool=prefork & celery -A EngageX_Streaming flower --loglevel=info & wait -n"
+    ],
     "dependsOn": [
       {
         "containerName": "redis",
         "condition": "START"
       }
-    ],
-    "command": ["/app/docker-entrypoint.sh"]
+    ]
   },
   {
     "name": "redis",
-    "image": "${redis_image}",
+    "image": "redis",
     "essential": false,
-    "memory": 256,
-    "cpu": 128,
+    "memory": 1024,  // 1 GB
+    "cpu": 256,  // 1/2 vCPU
     "portMappings": [
       {
         "containerPort": 6379,
