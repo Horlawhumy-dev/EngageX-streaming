@@ -313,7 +313,7 @@ resource "aws_ecs_task_definition" "django" {
     load_balancer {
       target_group_arn = aws_lb_target_group.django_tg.arn
       container_name   = "django"
-      container_port   = 80
+      container_port   = 8000
     }
 
     desired_count = 2
