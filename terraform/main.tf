@@ -3,7 +3,7 @@ terraform {
   backend "s3" {
     bucket         = "engagex-user-content-1234"
     key            = "terraform.tfstate"
-    region         = "eu-north-1"
+    region         = "us-west-1"
     encrypt        = true
   }
 }
