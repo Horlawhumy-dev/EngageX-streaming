@@ -50,6 +50,9 @@ env:
   STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
   STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
   STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  EC2_HOST: ${{ secrets.EC2_HOST }}
+  EC2_USER: ${{ secrets.EC2_USER }}
+  EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
 
   # Redis URL
   REDIS_URL: ${{ secrets.REDIS_URL }}
@@ -74,17 +77,9 @@ jobs:
 
       - name: Build and Tag Docker Images
         run: |
-          docker build -t django-app -f Dockerfile .
-          docker tag django-app $ECR_REPOSITORY:$IMAGE_TAG
-
-          docker build -t celery-worker -f Dockerfile .
-          docker tag celery-worker $ECR_REPOSITORY_CELERY:$IMAGE_TAG
-
-          docker build -t flower-monitor -f Dockerfile .
-          docker tag flower-monitor $ECR_REPOSITORY_FLOWER:$IMAGE_TAG
+          docker build -t engagex-stream-app -f Dockerfile .
+          docker tag engagex-stream-app $ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Push Docker Images to ECR
         run: |
           docker push $ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REPOSITORY_CELERY:$IMAGE_TAG
-          docker push $ECR_REPOSITORY_FLOWER:$IMAGE_TAG

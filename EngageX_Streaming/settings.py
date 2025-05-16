@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from decouple import config
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -128,15 +127,15 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
-AWS_SES_REGION = config("AWS_SES_REGION", "us-west-1")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_SES_REGION = os.environ.get("AWS_SES_REGION", "us-west-1")
 
 # Database
 if "RDS_HOSTNAME" in os.environ:
@@ -155,16 +154,16 @@ if "RDS_HOSTNAME" in os.environ:
     DEEPGRAM_API_KEY = os.environ["DEEPGRAM_API_KEY"]
 
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = os.environ("EMAIL_HOST")
+    EMAIL_HOST = os.environ.get("EMAIL_HOST")
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = os.environ("EMAIL_HOST_USER")
-    EMAIL_HOST_PASSWORD = os.environ("EMAIL_HOST_PASSWORD")
-    DEFAULT_FROM_EMAIL = os.environ("DEFAULT_FROM_EMAIL")
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+    DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
-    AWS_ACCESS_KEY_ID = os.environ("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.environ("AWS_SECRET_ACCESS_KEY")
-    AWS_SES_REGION = os.environ("AWS_SES_REGION", "us-west-1")
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    AWS_SES_REGION = os.environ.get("AWS_SES_REGION", "us-west-1")
 
 
 else:
@@ -172,18 +171,18 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": config("POSTGRESQL_DATABASE_NAME"),
-            "USER": config("POSTGRESQL_USERNAME"),
-            "PASSWORD": config("POSTGRESQL_PASSWORD"),
-            "HOST": config("POSTGRESQL_SERVER_NAME"),
-            "PORT": config("PORT", default="5432"),
+            "NAME": os.environ.get("POSTGRESQL_DATABASE_NAME"),
+            "USER": os.environ.get("POSTGRESQL_USERNAME"),
+            "PASSWORD": os.environ.get("POSTGRESQL_PASSWORD"),
+            "HOST": os.environ.get("POSTGRESQL_SERVER_NAME"),
+            "PORT": os.environ.get("PORT", default=5432),
             "OPTIONS": {
                 "sslmode": "require",
             },
         }
     }
 
-    OPENAI_API_KEY = config("OPENAI_API_KEY")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     DEEPGRAM_API_KEY = os.environ["DEEPGRAM_API_KEY"]
 
 # Password validation
