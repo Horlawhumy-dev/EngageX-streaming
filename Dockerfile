@@ -30,7 +30,7 @@ RUN python manage.py collectstatic --noinput && echo "Static files collected"
 #     && chown -R $USER:$GROUP /app
 
 # Switch to non-root user
-USER $USER
+# USER $USER
 
 # Expose port
 EXPOSE $PORT
