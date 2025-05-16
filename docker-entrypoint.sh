@@ -1,6 +1,7 @@
 # #!/bin/bash
 
 # # Start Django server
+python manage.py migrate
 # python manage.py runserver 0.0.0.0:8000 &
 
 # # Start Celery Worker
@@ -14,7 +15,6 @@
 
 
 #!/bin/bash
-python manage.py migrate
 python manage.py collectstatic --noinput
 gunicorn EngageX_Streaming.wsgi:application --bind 0.0.0.0:8000
 

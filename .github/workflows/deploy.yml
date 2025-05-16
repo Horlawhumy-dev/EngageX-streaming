@@ -50,6 +50,9 @@ env:
   STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
   STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
   STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  EC2_HOST: ${{ secrets.EC2_HOST }}
+  EC2_USER: ${{ secrets.EC2_USER }}
+  EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
 
   # Redis URL
   REDIS_URL: ${{ secrets.REDIS_URL }}
@@ -76,50 +79,28 @@ jobs:
         run: |
           docker build -t engagex-stream-app -f Dockerfile .
           docker tag engagex-stream-app $ECR_REPOSITORY:$IMAGE_TAG
-          docker build -t nginx-app -f ./nginx/Dockerfile .
-          docker tag nginx-app 266735827053.dkr.ecr.us-west-1.amazonaws.com/nginx:latest
 
       - name: Push Docker Images to ECR
         run: |
           docker push $ECR_REPOSITORY:$IMAGE_TAG
-          docker push 266735827053.dkr.ecr.us-west-1.amazonaws.com/nginx:latest
+      
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Deploy on EC2 via SSH
+        uses: appleboy/ssh-action@v0.1.7
         with:
-          terraform_version: 1.6.6 
-
-      - name: Export Terraform variables
-        run: |
-          for var in \
-            AWS_REGION \
-            ECR_REPOSITORY IMAGE_TAG \
-            POSTGRESQL_DATABASE_NAME POSTGRESQL_USERNAME POSTGRESQL_SERVER_NAME POSTGRESQL_PASSWORD PORT \
-            OPENAI_API_KEY DEEPGRAM_API_KEY \
-            EMAIL_HOST EMAIL_PORT EMAIL_USE_TLS EMAIL_HOST_USER EMAIL_HOST_PASSWORD DEFAULT_FROM_EMAIL \
-            USE_S3 AWS_STORAGE_BUCKET_NAME AWS_S3_REGION_NAME AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY \
-            INTUIT_VERIFIER_TOKEN INTUIT_CLIENT_ID INTUIT_CLIENT_SECRET NEW_INTUIT_REDIRECT_URI INTUIT_ENVIRONMENT \
-            STRIPE_SECRET_KEY STRIPE_PUBLISHABLE_KEY STRIPE_WEBHOOK_SECRET \
-            REDIS_URL
-          do
-            echo "Exporting TF_VAR_$var"
-            echo "TF_VAR_$var=${!var}" >> $GITHUB_ENV
-          done
-
-      - name: Clean Terraform Cache
-        working-directory: ./terraform
-        run: |
-          echo "Cleaning Terraform cache..."
-          rm -rf .terraform .terraform.lock.hcl
-
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
-
-      - name: Terraform Plan
-        working-directory: ./terraform
-        run: terraform plan
-
-      - name: Terraform Apply
-        working-directory: ./terraform
-        run: terraform apply -auto-approve
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Example commands on EC2:
+            echo "Logging into EC2 instance..."
+            # Pull new docker image
+            docker pull $ECR_REPOSITORY:$IMAGE_TAG
+            
+            # Optional: docker-compose pull and up (adjust paths as needed)
+            cd /app
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+            
+            # Or run your deployment script, restart services, etc.
+            echo "Deployment completed."
