@@ -3,7 +3,7 @@ name: Deploy Django + Celery + Flower to ECS
 on:
   push:
     branches:
-      - main
+      - dev
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -74,20 +74,15 @@ jobs:
 
       - name: Build and Tag Docker Images
         run: |
-          docker build -t django-app -f Dockerfile .
-          docker tag django-app $ECR_REPOSITORY:$IMAGE_TAG
-
-          docker build -t celery-worker -f Dockerfile .
-          docker tag celery-worker $ECR_REPOSITORY_CELERY:$IMAGE_TAG
-
-          docker build -t flower-monitor -f Dockerfile .
-          docker tag flower-monitor $ECR_REPOSITORY_FLOWER:$IMAGE_TAG
+          docker build -t engagex-stream-app -f Dockerfile .
+          docker tag engagex-stream-app $ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t nginx-app -f ./nginx/Dockerfile .
+          docker tag nginx-app 266735827053.dkr.ecr.us-west-1.amazonaws.com/nginx:latest
 
       - name: Push Docker Images to ECR
         run: |
           docker push $ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REPOSITORY_CELERY:$IMAGE_TAG
-          docker push $ECR_REPOSITORY_FLOWER:$IMAGE_TAG
+          docker push 266735827053.dkr.ecr.us-west-1.amazonaws.com/nginx:latest
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -98,7 +93,7 @@ jobs:
         run: |
           for var in \
             AWS_REGION \
-            ECR_REPOSITORY ECR_REPOSITORY_CELERY ECR_REPOSITORY_FLOWER IMAGE_TAG \
+            ECR_REPOSITORY IMAGE_TAG \
             POSTGRESQL_DATABASE_NAME POSTGRESQL_USERNAME POSTGRESQL_SERVER_NAME POSTGRESQL_PASSWORD PORT \
             OPENAI_API_KEY DEEPGRAM_API_KEY \
             EMAIL_HOST EMAIL_PORT EMAIL_USE_TLS EMAIL_HOST_USER EMAIL_HOST_PASSWORD DEFAULT_FROM_EMAIL \
