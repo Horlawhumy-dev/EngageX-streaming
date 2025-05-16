@@ -154,16 +154,16 @@ if "RDS_HOSTNAME" in os.environ:
     DEEPGRAM_API_KEY = os.environ["DEEPGRAM_API_KEY"]
 
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = os.environ("EMAIL_HOST")
+    EMAIL_HOST = os.environ.get("EMAIL_HOST")
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = os.environ("EMAIL_HOST_USER")
-    EMAIL_HOST_PASSWORD = os.environ("EMAIL_HOST_PASSWORD")
-    DEFAULT_FROM_EMAIL = os.environ("DEFAULT_FROM_EMAIL")
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+    DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
-    AWS_ACCESS_KEY_ID = os.environ("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.environ("AWS_SECRET_ACCESS_KEY")
-    AWS_SES_REGION = os.environ("AWS_SES_REGION", "us-west-1")
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    AWS_SES_REGION = os.environ.get("AWS_SES_REGION", "us-west-1")
 
 
 else:
