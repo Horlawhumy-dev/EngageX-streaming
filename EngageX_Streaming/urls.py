@@ -22,5 +22,6 @@ from django.http import JsonResponse
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('sessions/', include('practice_sessions.urls')),
+    path('users/', include('users.urls')),
     path("health", lambda r: JsonResponse({"ok": True}))
 ]
