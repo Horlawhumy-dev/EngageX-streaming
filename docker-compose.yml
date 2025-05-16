@@ -27,5 +27,5 @@ services:
     env_file:
       - .env
   
-  volumes:
-    tmp-data:
+volumes:
+  tmp-data:
