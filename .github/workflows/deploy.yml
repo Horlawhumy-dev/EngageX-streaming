@@ -83,24 +83,3 @@ jobs:
       - name: Push Docker Images to ECR
         run: |
           docker push $ECR_REPOSITORY:$IMAGE_TAG
-      
-
-      - name: Deploy on EC2 via SSH
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ env.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Example commands on EC2:
-            echo "Logging into EC2 instance..."
-            # Pull new docker image
-            docker pull $ECR_REPOSITORY:$IMAGE_TAG
-            
-            # Optional: docker-compose pull and up (adjust paths as needed)
-            cd /app
-            docker-compose pull
-            docker-compose up -d --remove-orphans
-            
-            # Or run your deployment script, restart services, etc.
-            echo "Deployment completed."
