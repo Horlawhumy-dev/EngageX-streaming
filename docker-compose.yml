@@ -6,12 +6,16 @@ services:
     command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 EngageX_Streaming.asgi:application"
     ports:
       - "8000:8000"
+    volumes:
+      - tmp-data:/tmp
     env_file:
       - .env
 
   celery:
     image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=threads
+    volumes:
+      - tmp-data:/tmp
     env_file:
       - .env
 
@@ -22,3 +26,6 @@ services:
       - "5555:5555"
     env_file:
       - .env
+  
+  volumes:
+    tmp-data:
