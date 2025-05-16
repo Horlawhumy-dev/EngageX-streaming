@@ -175,7 +175,7 @@ else:
             "USER": os.environ.get("POSTGRESQL_USERNAME"),
             "PASSWORD": os.environ.get("POSTGRESQL_PASSWORD"),
             "HOST": os.environ.get("POSTGRESQL_SERVER_NAME"),
-            "PORT": os.environ.get("PORT", default="5432"),
+            "PORT": os.environ.get("PORT", default=5432),
             "OPTIONS": {
                 "sslmode": "require",
             },
