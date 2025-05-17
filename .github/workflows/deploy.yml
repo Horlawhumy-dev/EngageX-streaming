@@ -1,4 +1,4 @@
-name: Deploy Django + Celery + Flower to ECS
+name: Deploy Django + Celery + Flower to EC2
 
 on:
   push:
@@ -53,12 +53,32 @@ env:
   EC2_HOST: ${{ secrets.EC2_HOST }}
   EC2_USER: ${{ secrets.EC2_USER }}
   EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+  EC2_PUBLIC_DNS: ${{ secrets.EC2_PUBLIC_DNS }}
 
   # Redis URL
   REDIS_URL: ${{ secrets.REDIS_URL }}
 
 jobs:
-  deploy:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+    # - name: Run Tests
+    #   run: |
+    #     python myapp/manage.py test
+
+  package:
     runs-on: ubuntu-latest
 
     steps:
@@ -84,17 +104,28 @@ jobs:
         run: |
           docker push $ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Deploy on EC2 via SSH
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ env.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "Logging into EC2 instance..."
-            cd /app
-            echo "Pulling latest changes from ECR..."
-            docker-compose pull
-            echo "Starting and removing old containers..."
-            docker-compose up -d --remove-orphans
-            echo "Deployment completed."
+  deploy:
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set Up SSH Key
+        shell: bash
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2-user-ssh.pem
+          chmod 400 ~/ec2-user-ssh.pem
+
+      - name: Deploy Code
+        shell: bash
+        run: |
+          # Copy all project files to the EC2 instance
+          scp -o StrictHostKeyChecking=no -i ~/ec2-user-ssh.pem -r ./ ${{ secrets.EC2_USER }}@ip-${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/app/
+          
+          # SSH into the EC2 instance and deploy
+          ssh -o StrictHostKeyChecking=no -i ~/ec2-user-ssh.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_PUBLIC_DNS }} << 'EOF'
+          cd /home/${{ secrets.EC2_USER }}/app/
+          docker-compose up -d
+          EOF
+          echo "Deployment completed!"
