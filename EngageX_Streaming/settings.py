@@ -147,7 +147,7 @@ if "RDS_HOSTNAME" in os.environ:
             "USER": os.environ["POSTGRESQL_USERNAME"],
             "PASSWORD": os.environ["POSTGRESQL_PASSWORD"],
             "HOST": os.environ["POSTGRESQL_SERVER_NAME"],
-            "PORT": os.environ.get("POSTGRES_PORT", default="5432"),
+            "PORT": 5432,
         }
     }
     OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
@@ -175,7 +175,7 @@ else:
             "USER": os.environ.get("POSTGRESQL_USERNAME"),
             "PASSWORD": os.environ.get("POSTGRESQL_PASSWORD"),
             "HOST": os.environ.get("POSTGRESQL_SERVER_NAME"),
-            "PORT": os.environ.get("PORT", default=5432),
+            "PORT": 5432,
             "OPTIONS": {
                 "sslmode": "require",
             },
