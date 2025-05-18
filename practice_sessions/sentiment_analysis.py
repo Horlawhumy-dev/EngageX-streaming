@@ -29,13 +29,13 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 # initialize Mediapipe Pose Detection
 mp_pose = mp.solutions.pose
-pose = mp_pose.Pose()
+# pose = mp_pose.Pose()
 
-# queues for thread communication
-frame_queue = Queue(maxsize=5)
+# # queues for thread communication
+# frame_queue = Queue(maxsize=5)
 
-# synchronization and STOP flag for thread termination
-stop_flag = threading.Event()
+# # synchronization and STOP flag for thread termination
+# stop_flag = threading.Event()
 
 results_data = {
     "good_back_frames": 0,
@@ -431,11 +431,11 @@ def extract_posture_angles(landmarks, image_width, image_height):
 
 # --- VIDEO THREADS ---
 
-def capture_frames(video_path):
+def capture_frames(video_path, frame_queue, stop_flag):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_path}")
-        return  # Was: False, but return nothing is idiomatic
+        return
 
     frame_number = 0
     frame_skip = 10
@@ -453,7 +453,9 @@ def capture_frames(video_path):
     stop_flag.set()
 
 
-def process_frames():
+
+def process_frames(frame_queue, stop_flag, lock, results_data):
+    pose = mp_pose.Pose(model_complexity=0) # 🧠 moved instantiation here
     posture_threshold = 5
 
     while not stop_flag.is_set() or not frame_queue.empty():
@@ -470,19 +472,23 @@ def process_frames():
                     results_data["neck_angles"].append(angles["neck_inclination"])
                     results_data["is_hand_present"] = angles["is_hand_present"]
 
-                # Optionally display landmarks
-                # mp.solutions.drawing_utils.draw_landmarks(
-                #     frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS
-                # )
-
-
 def analyze_posture(video_path):
     start_time = time.time()
     print(f"analyze_posture called with video_path: {video_path}", flush=True)
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        future_capture = executor.submit(capture_frames, video_path)
-        future_process = executor.submit(process_frames)
+    # Per-task instantiation
+    frame_queue = Queue(maxsize=5)
+    stop_flag = threading.Event()
+    lock = threading.Lock()
+    results_data = {
+        "back_angles": [],
+        "neck_angles": [],
+        "is_hand_present": "",
+    }
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_capture = executor.submit(capture_frames, video_path, frame_queue, stop_flag)
+        future_process = executor.submit(process_frames, frame_queue, stop_flag, lock, results_data)
         future_capture.result()
         future_process.result()
 
@@ -503,7 +509,6 @@ def analyze_posture(video_path):
             "range_neck_inclination": range_neck,
             "is_hand_present": is_hand_present,
         }
-
 # ---------------------- SENTIMENT ANALYSIS ----------------------
 
 def analyze_sentiment(transcript, metrics, posture_data):
