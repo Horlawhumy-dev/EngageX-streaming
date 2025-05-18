@@ -577,7 +577,7 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
                         lambda: analyze_results_task.delay(combined_transcript_text, window_paths[0], combined_audio_path)
                     )
                     # analysis_result = await asyncio.to_thread(analyze_results, combined_transcript_text,
-                    #                                           window_paths[0], combined_audio_path)
+                    #                                           window_paths[0], combined_audio_path)   
                     print(
                         f"WS: Analysis Result: {analysis_result} after {time.time() - analysis_start_time:.2f} seconds")
 
@@ -1338,6 +1338,7 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
             traceback.print_exc()
         finally:
             # Clean up temporary files
+            await asyncio.sleep(120)  # 2 minutes delay
             print(f"WS: Cleaning up temporary files for session {session_id}.")
             for file_path in temp_file_paths:
                 if os.path.exists(file_path):
