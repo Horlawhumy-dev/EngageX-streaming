@@ -361,7 +361,7 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
                     try:
                         # Assuming transcribe_audio returns the transcript string or None on failure
                         chunk_transcript = await asyncio.to_thread(
-                            lambda: transcribe_audio_task.delay(audio_path)
+                            lambda: transcribe_audio_task.delay(audio_path).get(timeout=180)  # Adjust timeout as needed
                         )
 
                         # chunk_transcript = await asyncio.to_thread(transcribe_audio, audio_path)
@@ -574,7 +574,7 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
                     # Pass the combined_transcript_text, video_path of the first chunk, and the combined_audio_path
                     # This replicates the call signature from the working version
                     analysis_result = await asyncio.to_thread(
-                        lambda: analyze_results_task.delay(combined_transcript_text, window_paths[0], combined_audio_path)
+                        lambda: analyze_results_task.delay(combined_transcript_text, window_paths[0], combined_audio_path).get(timeout=180)  # Adjust timeout as needed
                     )
                     # analysis_result = await asyncio.to_thread(analyze_results, combined_transcript_text,
                     #                                           window_paths[0], combined_audio_path)   
@@ -1338,7 +1338,7 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
             traceback.print_exc()
         finally:
             # Clean up temporary files
-            await asyncio.sleep(120)  # 2 minutes delay
+            # await asyncio.sleep(120)  # 2 minutes delay
             print(f"WS: Cleaning up temporary files for session {session_id}.")
             for file_path in temp_file_paths:
                 if os.path.exists(file_path):
