@@ -121,6 +121,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 
 CSRF_TRUSTED_ORIGINS = [
+    "https://api-stream.engagexai.io",
     "https://api.engagexai.io",
     "http://localhost:3000",
     "http://localhost:5500"
