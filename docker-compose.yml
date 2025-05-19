@@ -13,7 +13,15 @@ services:
 
   celery:
     image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    command: celery -A EngageX_Streaming worker --loglevel=info --pool=threads
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+
+  celery-2:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     volumes:
       - tmp-data:/tmp
     env_file:
