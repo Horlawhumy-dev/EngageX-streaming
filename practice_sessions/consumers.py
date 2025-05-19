@@ -54,6 +54,12 @@ from .tasks import (
     analyze_results_task,
     ai_audience_question_task,
 )
+from botocore.config import Config
+
+# Configure a larger connection pool
+s3_config = Config(
+    max_pool_connections=50
+)
 
 User = get_user_model() # Get the active user model
 
@@ -68,7 +74,12 @@ client = openai.OpenAI() if openai.api_key else None  # Initialize client only i
 
 # Initialize S3 client
 # Ensure AWS_REGION is set in your environment or settings
-s3 = boto3.client("s3", region_name=os.environ.get('AWS_REGION'))
+# Create the S3 client with the config applied
+s3 = boto3.client(
+    "s3",
+    region_name=os.environ.get('AWS_REGION'),
+    config=s3_config
+)
 BUCKET_NAME = "engagex-user-content-1234" # Replace with your actual S3 bucket name
 BASE_FOLDER = "user-videos/" # Base folder in S3 bucket
 TEMP_MEDIA_ROOT = tempfile.gettempdir() # Use system's temporary directory
