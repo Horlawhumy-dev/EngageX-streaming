@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   django:
-    build: .
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
     command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 EngageX_Streaming.asgi:application"
     ports:
       - "8000:8000"
@@ -13,8 +12,7 @@ services:
       - .env
 
   celery:
-    build: .
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     volumes:
       - tmp-data:/tmp
@@ -22,8 +20,7 @@ services:
       - .env
 
   celery-2:
-    build: .
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     volumes:
       - tmp-data:/tmp
@@ -31,8 +28,7 @@ services:
       - .env
 
   celery-flower:
-    build: .
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
     command: celery -A EngageX_Streaming flower --loglevel=info
     ports:
       - "5555:5555"
