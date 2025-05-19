@@ -25,6 +25,7 @@ COPY . .
 
 # Collect static files (if you use Django staticfiles)
 # RUN python manage.py collectstatic --noinput
+COPY check-celery.sh /app/check-celery.sh
 RUN chmod +x check-celery.sh
 
 # Expose port 8000 by default
