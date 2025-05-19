@@ -24,16 +24,16 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(i) for i in obj]
     return obj
 
-@shared_task
+@shared_task(name="analyze_results_task", queue="celery", bind=True)
 def analyze_results_task(transcript, video_path, audio_path):
     result = analyze_results(transcript, video_path, audio_path)
     return convert_numpy_types(result)
 
 
-@shared_task
+@shared_task(name="transcribe_audio_task", queue="cpu_queue", bind=True)
 def transcribe_audio_task(audio_path):
     return transcribe_audio(audio_path)
 
-@shared_task
+@shared_task(name="ai_audience_question_task", queue="cpu_queue", bind=True)
 def ai_audience_question_task(transcript):
     return ai_audience_question(transcript)

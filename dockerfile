@@ -23,9 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Collect static files (if you use Django staticfiles)
-# RUN python manage.py collectstatic --noinput
-RUN chmod +x /app/check-celery.sh
+ RUN chmod +x /app/check-celery.sh
 
 # Expose port 8000 by default
 EXPOSE 8000
