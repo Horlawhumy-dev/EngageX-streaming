@@ -13,7 +13,7 @@ services:
 
   celery:
     image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork -Q celery
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
       test: ["CMD", "./check-celery.sh"]
       interval: 30s
@@ -26,7 +26,7 @@ services:
 
   celery-2:
     image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
-    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork -Q cpu_queue
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
       test: ["CMD", "./check-celery.sh"]
       interval: 30s
