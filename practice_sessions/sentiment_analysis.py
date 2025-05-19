@@ -17,7 +17,7 @@ from deepgram import (
     FileSource,
 )  # pip install deepgram-sdk
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dotenv import load_dotenv
 
 from django.conf import settings
@@ -476,39 +476,73 @@ def analyze_posture(video_path):
     start_time = time.time()
     print(f"analyze_posture called with video_path: {video_path}", flush=True)
 
-    # Per-task instantiation
-    frame_queue = Queue(maxsize=5)
-    stop_flag = threading.Event()
-    lock = threading.Lock()
-    results_data = {
-        "back_angles": [],
-        "neck_angles": [],
-        "is_hand_present": "",
-    }
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_capture = executor.submit(capture_frames, video_path, frame_queue, stop_flag)
-        future_process = executor.submit(process_frames, frame_queue, stop_flag, lock, results_data)
-        future_capture.result()
-        future_process.result()
-
-    with lock:
-        mean_back = np.mean(results_data["back_angles"]) if results_data["back_angles"] else 0
-        range_back = np.max(results_data["back_angles"]) - np.min(results_data["back_angles"]) if results_data["back_angles"] else 0
-        mean_neck = np.mean(results_data["neck_angles"]) if results_data["neck_angles"] else 0
-        range_neck = np.max(results_data["neck_angles"]) - np.min(results_data["neck_angles"]) if results_data["neck_angles"] else 0
-        is_hand_present = results_data["is_hand_present"] if results_data["is_hand_present"] else 0
-
-        elapsed_time = time.time() - start_time
-        print(f"\nElapsed time for posture: {elapsed_time:.2f} seconds")
-
+    if not os.path.exists(video_path):
+        print(f"Error: Could not open video file {video_path}", flush=True)
         return {
-            "mean_back_inclination": mean_back,
-            "range_back_inclination": range_back,
-            "mean_neck_inclination": mean_neck,
-            "range_neck_inclination": range_neck,
-            "is_hand_present": is_hand_present,
+            "mean_back_inclination": 5,
+            "range_back_inclination": 5,
+            "mean_neck_inclination": 5,
+            "range_neck_inclination": 5,
+            "is_hand_present": False,
         }
+
+    def run_posture_logic():
+        frame_queue = Queue(maxsize=5)
+        stop_flag = threading.Event()
+        lock = threading.Lock()
+        results_data = {
+            "back_angles": [],
+            "neck_angles": [],
+            "is_hand_present": "",
+        }
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_capture = executor.submit(capture_frames, video_path, frame_queue, stop_flag)
+            future_process = executor.submit(process_frames, frame_queue, stop_flag, lock, results_data)
+            future_capture.result()
+            future_process.result()
+
+        with lock:
+            mean_back = np.mean(results_data["back_angles"]) if results_data["back_angles"] else 0
+            range_back = np.max(results_data["back_angles"]) - np.min(results_data["back_angles"]) if results_data["back_angles"] else 0
+            mean_neck = np.mean(results_data["neck_angles"]) if results_data["neck_angles"] else 0
+            range_neck = np.max(results_data["neck_angles"]) - np.min(results_data["neck_angles"]) if results_data["neck_angles"] else 0
+            is_hand_present = results_data["is_hand_present"] if results_data["is_hand_present"] else 0
+
+            return {
+                "mean_back_inclination": mean_back,
+                "range_back_inclination": range_back,
+                "mean_neck_inclination": mean_neck,
+                "range_neck_inclination": range_neck,
+                "is_hand_present": is_hand_present,
+            }
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(run_posture_logic)
+            result = future.result(timeout=15)
+    except FuturesTimeoutError:
+        print("⚠️ analyze_posture timed out after 15 seconds", flush=True)
+        result = {
+            "mean_back_inclination": 5,
+            "range_back_inclination": 5,
+            "mean_neck_inclination": 5,
+            "range_neck_inclination": 5,
+            "is_hand_present": False,
+        }
+    except Exception as e:
+        print(f"⚠️ analyze_posture error: {e}", flush=True)
+        result = {
+            "mean_back_inclination": 5,
+            "range_back_inclination": 5,
+            "mean_neck_inclination": 5,
+            "range_neck_inclination": 5,
+            "is_hand_present": False,
+        }
+
+    elapsed_time = time.time() - start_time
+    print(f"\nElapsed time for posture: {elapsed_time:.2f} seconds")
+    return result
 # ---------------------- SENTIMENT ANALYSIS ----------------------
 
 def analyze_sentiment(transcript, metrics, posture_data):
@@ -751,11 +785,19 @@ def analyze_results(transcript_text, video_path, audio_path_for_metrics):
     print(f"video_path: {video_path}, audio_path_for_metrics: {audio_path_for_metrics}", flush=True)
 
     try:
-        with ThreadPoolExecutor() as executor:
-            future_analyze_posture = executor.submit(analyze_posture, video_path=video_path)
+        # with ThreadPoolExecutor() as executor:
+        #     future_analyze_posture = executor.submit(analyze_posture, video_path=video_path)
 
-        posture_data = future_analyze_posture.result()
-        print(f"posture_data: {posture_data}", flush=True)
+        # posture_data = future_analyze_posture.result()
+        # print(f"posture_data: {posture_data}", flush=True)
+
+        posture_data = {
+            "mean_back_inclination": 0,
+            "range_back_inclination": 0,
+            "mean_neck_inclination": 0,
+            "range_neck_inclination": 0,
+            "is_hand_present": False,
+        }
 
         metrics = process_audio(audio_path_for_metrics, transcript_text)  # Use the audio path for metrics calculation
         print(f"process audio metrics: {metrics}", flush=True)
