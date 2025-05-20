@@ -31,4 +31,4 @@ CMD ["sh", "-c", "daphne -b 0.0.0.0 -p $APP_PORT EngageX_Streaming.asgi:applicat
 
 # Optional health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl --fail http://localhost:8000/health || exit 1
+  CMD curl --fail http://localhost:${APP_PORT}/health || exit 1
