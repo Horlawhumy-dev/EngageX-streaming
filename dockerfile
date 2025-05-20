@@ -26,7 +26,8 @@ COPY . .
 RUN chmod +x /app/check-celery.sh
 
 # Expose port 8000 by default
-CMD ["sh", "-c", "daphne -b 0.0.0.0 -p 8000 EngageX_Streaming.asgi:application"]
+ENV APP_PORT=8000
+CMD ["sh", "-c", "daphne -b 0.0.0.0 -p $APP_PORT EngageX_Streaming.asgi:application"]
 
 # Optional health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \

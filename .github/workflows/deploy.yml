@@ -127,7 +127,8 @@ jobs:
           cd /home/${{ secrets.EC2_USER }}/app/
           aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
           docker-compose pull
-          docker-compose up -d --remove-orphans
+          docker-compose up -d --remove-
+          docker system prune -a -f
           EOF
           echo "Deployment completed!"
           
