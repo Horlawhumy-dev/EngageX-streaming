@@ -35,28 +35,28 @@ services:
       - tmp-data:/tmp
     env_file:
       - .env
-  # django-4:
-  #   image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-  #   environment:
-  #     - APP_PORT=8003
-  #   command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8003 EngageX_Streaming.asgi:application"
-  #   ports:
-  #     - "8003:8003"
-  #   volumes:
-  #     - tmp-data:/tmp
-  #   env_file:
-  #     - .env
-  # django-5:
-  #   image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-  #   environment:
-  #     - APP_PORT=8004
-  #   command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8004 EngageX_Streaming.asgi:application"
-  #   ports:
-  #     - "8004:8004"
-  #   volumes:
-  #     - tmp-data:/tmp
-  #   env_file:
-  #     - .env
+  django-4:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8003
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8003 EngageX_Streaming.asgi:application"
+    ports:
+      - "8003:8003"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-5:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8004
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8004 EngageX_Streaming.asgi:application"
+    ports:
+      - "8004:8004"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
   # django-6:
   #   image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
   #   environment:
