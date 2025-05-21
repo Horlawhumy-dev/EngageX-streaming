@@ -455,22 +455,28 @@ def capture_frames(video_path, frame_queue, stop_flag):
 
 
 def process_frames(frame_queue, stop_flag, lock, results_data):
-    pose = mp_pose.Pose(model_complexity=0) # 🧠 moved instantiation here
-    posture_threshold = 5
+    prev_gray = None
 
     while not stop_flag.is_set() or not frame_queue.empty():
         if not frame_queue.empty():
             frame = frame_queue.get()
-            image_height, image_width, _ = frame.shape
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = pose.process(frame_rgb)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
-            if results.pose_landmarks:
-                angles = extract_posture_angles(results.pose_landmarks.landmark, image_width, image_height)
+            if prev_gray is not None:
+                frame_diff = cv2.absdiff(prev_gray, gray)
+                _, motion_mask = cv2.threshold(frame_diff, 25, 255, cv2.THRESH_BINARY)
+
+                motion_pixels = np.count_nonzero(motion_mask)
+                total_pixels = motion_mask.size
+                motion_percent = (motion_pixels / total_pixels) * 100
+
                 with lock:
-                    results_data["back_angles"].append(angles["back_inclination"])
-                    results_data["neck_angles"].append(angles["neck_inclination"])
-                    results_data["is_hand_present"] = angles["is_hand_present"]
+                    results_data["motion_scores"].append(motion_percent)
+
+            prev_gray = gray
+
+
 
 def analyze_posture(video_path):
     start_time = time.time()
@@ -479,22 +485,17 @@ def analyze_posture(video_path):
     if not os.path.exists(video_path):
         print(f"Error: Could not open video file {video_path}", flush=True)
         return {
-            "mean_back_inclination": 5,
-            "range_back_inclination": 5,
-            "mean_neck_inclination": 5,
-            "range_neck_inclination": 5,
-            "is_hand_present": False,
+            "avg_motion_percent": 0.0
         }
 
-    def run_posture_logic():
+    def run_motion_logic():
         frame_queue = Queue(maxsize=5)
         stop_flag = threading.Event()
         lock = threading.Lock()
         results_data = {
-            "back_angles": [],
-            "neck_angles": [],
-            "is_hand_present": "",
+            "motion_scores": []
         }
+
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_capture = executor.submit(capture_frames, video_path, frame_queue, stop_flag)
@@ -503,61 +504,46 @@ def analyze_posture(video_path):
             future_process.result()
 
         with lock:
-            mean_back = np.mean(results_data["back_angles"]) if results_data["back_angles"] else 0
-            range_back = np.max(results_data["back_angles"]) - np.min(results_data["back_angles"]) if results_data["back_angles"] else 0
-            mean_neck = np.mean(results_data["neck_angles"]) if results_data["neck_angles"] else 0
-            range_neck = np.max(results_data["neck_angles"]) - np.min(results_data["neck_angles"]) if results_data["neck_angles"] else 0
-            is_hand_present = results_data["is_hand_present"] if results_data["is_hand_present"] else 0
-
+            avg_motion = np.mean(results_data["motion_scores"]) if results_data["motion_scores"] else 0.0
             return {
-                "mean_back_inclination": mean_back,
-                "range_back_inclination": range_back,
-                "mean_neck_inclination": mean_neck,
-                "range_neck_inclination": range_neck,
-                "is_hand_present": is_hand_present,
+                "avg_motion_percent": avg_motion
             }
 
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(run_posture_logic)
+            future = pool.submit(run_motion_logic)
             result = future.result(timeout=15)
     except FuturesTimeoutError:
         print("⚠️ analyze_posture timed out after 15 seconds", flush=True)
         result = {
-            "mean_back_inclination": 5,
-            "range_back_inclination": 5,
-            "mean_neck_inclination": 5,
-            "range_neck_inclination": 5,
-            "is_hand_present": False,
+            "avg_motion_percent": 0.0
         }
     except Exception as e:
         print(f"⚠️ analyze_posture error: {e}", flush=True)
         result = {
-            "mean_back_inclination": 5,
-            "range_back_inclination": 5,
-            "mean_neck_inclination": 5,
-            "range_neck_inclination": 5,
-            "is_hand_present": False,
+            "avg_motion_percent": 0.0
         }
 
     elapsed_time = time.time() - start_time
-    print(f"\nElapsed time for posture: {elapsed_time:.2f} seconds")
+    print(f"\nElapsed time for posture (motion): {elapsed_time:.2f} seconds")
     return result
+
 # ---------------------- SENTIMENT ANALYSIS ----------------------
 
 def analyze_sentiment(transcript, metrics, posture_data):
     # Get posture scores
-    mean_back_score, mean_back_rationale = score_posture(posture_data["mean_back_inclination"], 0, 10, "Back Posture")
-    mean_neck_score, mean_neck_rationale = score_posture(posture_data["mean_neck_inclination"], 1, 13, "Neck Posture")
-    mean_body_posture = (mean_back_score + mean_neck_score) / 2
+    motion_score, motion_rationale = score_posture(posture_data["avg_motion_percent"], 1,10,"Body Motion")
+    # mean_back_score, mean_back_rationale = score_posture(posture_data["mean_back_inclination"], 0, 10, "Back Posture")
+    # mean_neck_score, mean_neck_rationale = score_posture(posture_data["mean_neck_inclination"], 1, 13, "Neck Posture")
+    # mean_body_posture = (mean_back_score + mean_neck_score) / 2
 
-    range_back_score, range_back_rationale = score_posture(posture_data["range_back_inclination"], 0, 15,
-                                                           "Back range of movement")
-    range_neck_score, range_neck_rationale = score_posture(posture_data["range_neck_inclination"], 7, 27,
-                                                           "Neck range of movement")
-    range_body_posture = (range_back_score + range_neck_score) / 2
+    # range_back_score, range_back_rationale = score_posture(posture_data["range_back_inclination"], 0, 15,
+    #                                                        "Back range of movement")
+    # range_neck_score, range_neck_rationale = score_posture(posture_data["range_neck_inclination"], 7, 27,
+    #                                                        "Neck range of movement")
+    # range_body_posture = (range_back_score + range_neck_score) / 2
 
-    is_hand_present = posture_data["is_hand_present"]
+    is_hand_present = True
 
     prompt = f"""
     You are an advanced presentation evaluation system. Using the provided speech metrics, their rationale and the speakers transcript, generate a performance analysis with the following scores (each on a scale of 1–100). Return valid JSON only
@@ -570,7 +556,7 @@ def analyze_sentiment(transcript, metrics, posture_data):
       - Select one of these emotions that the audience is feeling most strongly ONLY choose from this list(thinking, empathy, excitement, laughter, surprise, interested)
    
     Conviction:
-      - Indicates firmness and clarity of beliefs or message. Evaluates how strongly and clearly the speaker presents their beliefs and message. Dependent on volume Volume_score: {metrics["Metrics"]["Volume"]} {metrics["Metrics"]["Volume Rationale"]}, pace_score: {metrics["Scores"]["Pace Score"]} {metrics["Metrics"]["Pace Rationale"]}, pause_score: {metrics["Scores"]["Pause Score"]} {metrics["Metrics"]["Pause Metric Rationale"]}, Posture score: {mean_body_posture} {mean_back_rationale} {mean_neck_rationale}, stiffness score: {range_body_posture} {range_back_rationale} {range_neck_rationale}, Hand Motion: {is_hand_present} and transcript content
+      - Indicates firmness and clarity of beliefs or message. Evaluates how strongly and clearly the speaker presents their beliefs and message. Dependent on volume Volume_score: {metrics["Metrics"]["Volume"]} {metrics["Metrics"]["Volume Rationale"]}, pace_score: {metrics["Scores"]["Pace Score"]} {metrics["Metrics"]["Pace Rationale"]}, pause_score: {metrics["Scores"]["Pause Score"]} {metrics["Metrics"]["Pause Metric Rationale"]}, Body Motion Score: {motion_score} {motion_rationale} and transcript content
 
     Clarity:
       -  Measures how easily the audience can understand the speaker’s message, dependent on pace, volume consistency, effective pause usage. Volume_score: {metrics["Metrics"]["Volume"]} {metrics["Metrics"]["Volume Rationale"]}, pace_score: {metrics["Scores"]["Pace Score"]} {metrics["Metrics"]["Pace Rationale"]}, pause_score: {metrics["Scores"]["Pause Score"]} {metrics["Metrics"]["Pause Metric Rationale"]}
@@ -579,7 +565,7 @@ def analyze_sentiment(transcript, metrics, posture_data):
 	- Measure of conciseness of words. To be graded by the transcript
       
     Transformative Potential:
-      - Potential to motivate significant change or shift perspectives. Graded primarily on transcript content but also Volume_score: {metrics["Metrics"]["Volume"]} {metrics["Metrics"]["Volume Rationale"]}, pace_score: {metrics["Scores"]["Pace Score"]} {metrics["Metrics"]["Pace Rationale"]}, pause_score: {metrics["Scores"]["Pause Score"]} {metrics["Metrics"]["Pause Metric Rationale"]}, Posture score: {mean_body_posture} {mean_back_rationale} {mean_neck_rationale}, stiffness score: {range_body_posture} {range_back_rationale} {range_neck_rationale}, Hand Motion: {is_hand_present}
+      - Potential to motivate significant change or shift perspectives. Graded primarily on transcript content but also Volume_score: {metrics["Metrics"]["Volume"]} {metrics["Metrics"]["Volume Rationale"]}, pace_score: {metrics["Scores"]["Pace Score"]} {metrics["Metrics"]["Pace Rationale"]}, pause_score: {metrics["Scores"]["Pause Score"]} {metrics["Metrics"]["Pause Metric Rationale"]}, Body Motion Score: {motion_score} {motion_rationale}
 
     Trigger Response:
       - Indicates to what extent the presentation is triggers an audience emotional response. Graded primarily on transcript content but also Volume_score: {metrics["Metrics"]["Volume"]} {metrics["Metrics"]["Volume Rationale"]}, pause_score: {metrics["Scores"]["Pause Score"]} {metrics["Metrics"]["Pause Metric Rationale"]}
@@ -652,13 +638,12 @@ def analyze_sentiment(transcript, metrics, posture_data):
         # Brevity: {feedback['Brevity']}, transformative potential: {feedback['Transformative Potential']}. The audience's trigger response: {feedback['Trigger Response']}, filler words usage score: {feedback['Filler Words']}, 
         # and grammar:{feedback['Grammar']}. The dominant audience emotion perceived was '{feedback['Audience Emotion']}'."""
 
-        # Body posture score: {mean_body_posture}, Body movement score: {range_body_posture} Speaker Transcript: {transcript}\n Volume_score: {metrics["Metrics"]["Volume"]}, pitch_variability_score: {metrics["Scores"]["Pitch Variability Score"]}. pace score: {metrics["Scores"]["Pace Score"]}, pauses score: {metrics["Scores"]["Pause Score"]}, Hand Motion: {is_hand_present}"""
         # Speaker Transcript: {transcript}\n Body Language rationale: {mean_back_rationale}, {mean_neck_rationale}, {range_back_rationale}, {range_neck_rationale}. Volume rationale: {metrics['Metrics']['Volume Rationale']}. Pitch variability rationale: {metrics['Metrics']['Pitch Variability Rationale']}. Pace rationale: {metrics['Metrics']['Pace Rationale']}. Pause rationale: {metrics['Metrics']['Pause Metric Rationale']}."""
         parsed_response['Feedback']["General Feedback Summary"] = general_feedback_summary
         parsed_response['Feedback']["Impact"] = round((parsed_response['Feedback']["Conviction"] + parsed_response['Feedback']["Transformative Potential"] + parsed_response['Feedback']["Trigger Response"]) / 3 )
         parsed_response['Posture Scores'] = {
-            "Posture": round(mean_body_posture),
-            "Motion": round(range_body_posture),
+            "Posture": round(motion_score), #Keeping both as motion score no longer tracking posture
+            "Motion": round(motion_score),  #Keeping both as motion score no longer tracking posture
             "Gestures": is_hand_present
         }
     except json.JSONDecoder:
@@ -785,19 +770,19 @@ def analyze_results(transcript_text, video_path, audio_path_for_metrics):
     print(f"video_path: {video_path}, audio_path_for_metrics: {audio_path_for_metrics}", flush=True)
 
     try:
-        # with ThreadPoolExecutor() as executor:
-        #     future_analyze_posture = executor.submit(analyze_posture, video_path=video_path)
+        with ThreadPoolExecutor() as executor:
+            future_analyze_posture = executor.submit(analyze_posture, video_path=video_path)
 
-        # posture_data = future_analyze_posture.result()
-        # print(f"posture_data: {posture_data}", flush=True)
+        posture_data = future_analyze_posture.result()
+        print(f"posture_data: {posture_data}", flush=True)
 
-        posture_data = {
-            "mean_back_inclination": 0,
-            "range_back_inclination": 0,
-            "mean_neck_inclination": 0,
-            "range_neck_inclination": 0,
-            "is_hand_present": False,
-        }
+        # posture_data = {
+        #     "mean_back_inclination": 0,
+        #     "range_back_inclination": 0,
+        #     "mean_neck_inclination": 0,
+        #     "range_neck_inclination": 0,
+        #     "is_hand_present": False,
+        # }
 
         metrics = process_audio(audio_path_for_metrics, transcript_text)  # Use the audio path for metrics calculation
         print(f"process audio metrics: {metrics}", flush=True)
