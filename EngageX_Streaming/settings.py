@@ -124,7 +124,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://api-stream.engagexai.io",
     "https://api.engagexai.io",
     "http://localhost:3000",
-    "http://localhost:5500"
+    "http://localhost:5500",
+    "http://engagexstteamlb-2145277520.us-west-1.elb.amazonaws.com"
 ]
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
