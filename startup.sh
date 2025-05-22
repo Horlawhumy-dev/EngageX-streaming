@@ -1,101 +1,393 @@
 #!/bin/bash
 
-# This script is intended to be run on an Ubuntu server instance
-# It installs Docker, Docker Compose, and other necessary packages
-# and sets up the environment for a web application.
-# It also logs all output to a file for debugging purposes.
-# Ensure the script is run as root
+# Ensure it's run as root
 if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run as root" 1>&2
+    echo "Run as root" >&2
     exit 1
 fi
-# Log all output for debugging
+
+# Log all output
 exec > >(tee /var/log/user-data.log | logger -t user-data) 2>&1
 
-# Update and upgrade all packages
+echo "Updating packages..."
 apt update -y && apt upgrade -y
 
-# Install Docker
-apt install -y docker.io
+echo "Installing Docker..."
+apt install -y docker.io unzip curl jq
+
+echo "Starting and enabling Docker..."
 systemctl start docker
 systemctl enable docker
 
-# Add ubuntu user to docker group (replace 'ubuntu' if using another user)
-usermod -aG docker ubuntu
-
-# Install Docker Compose (latest stable version)
-DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
-curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+echo "Installing Docker Compose..."
+DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
+  -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
-# Install Python3, pip3 already installed with ubuntu minimal, but ensure latest
-apt install -y python3 python3-pip
-pip3 install --upgrade pip setuptools wheel
-
-# Install Redis client only
-apt install -y redis-tools
-
-# Install PostgreSQL client libraries
-apt install -y postgresql-client libpq-dev
-
-# Install build tools
-apt install -y build-essential cmake
-
-# Install ffmpeg
-apt install -y ffmpeg
-
-# Install LibreOffice
-apt install -y libreoffice
-
-# Install AWS CLI v2
+echo "Installing AWS CLI v2..."
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
 unzip /tmp/awscliv2.zip -d /tmp
 /tmp/aws/install
-rm -rf /tmp/awscliv2.zip /tmp/aws
+rm -rf /tmp/aws*
 
-# add their vlaues to the environment variables
-export OPENAI_API_KEY=
-export POSTGRESQL_DATABASE_NAME=
-export POSTGRESQL_USERNAME=
-export POSTGRESQL_PASSWORD=
-export POSTGRESQL_SERVER_NAME=
-export DEEPGRAM_API_KEY=
-export EMAIL_USE_TLS=True
-export EMAIL_HOST_USER=
-export EMAIL_HOST_PASSWORD=
-export DEFAULT_FROM_EMAIL=
-export ALLOWED_HOSTS="localhost,*"
-export USE_S3=True
-export AWS_STORAGE_BUCKET_NAME=
-export AWS_S3_REGION_NAME=us-west-1
-export AWS_ACCESS_KEY_ID=
-export AWS_SECRET_ACCESS_KEY=
-export AUTH_TOKEN_FOR_WEBSOCKET=
-export STRIPE_SECRET_KEY=
-export STRIPE_PUBLISHABLE_KEY=
-export STRIPE_WEBHOOK_SECRET=
-export INTUIT_VERIFIER_TOKEN=
-export INTUIT_CLIENT_ID=
-export INTUIT_CLIENT_SECRET=
-export NEW_INTUIT_REDIRECT_URI=
-export INTUIT_ENVIRONMENT=production
-export VITE_ENGAGEX_PASS=
-export REDIS_URL=
+echo "Adding ubuntu to docker group..."
+usermod -aG docker ubuntu
 
-# Login to ECR
+echo "Creating app directory..."
+mkdir -p /home/ubuntu/app
+chown -R ubuntu:ubuntu /home/ubuntu/app
+
+# Switch to ubuntu user to set up app
+sudo -i -u ubuntu bash <<'EOF'
+cd ~/app
+
+echo "Creating .env file..."
+cat > .env <<EOL
+OPENAI_API_KEY=
+POSTGRESQL_DATABASE_NAME=
+POSTGRESQL_USERNAME=
+POSTGRESQL_PASSWORD=
+POSTGRESQL_SERVER_NAME=
+DEEPGRAM_API_KEY=
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=
+ALLOWED_HOSTS="localhost,*"
+USE_S3=True
+AWS_STORAGE_BUCKET_NAME=
+AWS_S3_REGION_NAME=us-west-1
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AUTH_TOKEN_FOR_WEBSOCKET=
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+INTUIT_VERIFIER_TOKEN=
+INTUIT_CLIENT_ID=
+INTUIT_CLIENT_SECRET=
+NEW_INTUIT_REDIRECT_URI=
+INTUIT_ENVIRONMENT=production
+VITE_ENGAGEX_PASS=
+REDIS_URL=
+EOL
+
+
+# Write your docker-compose.yml file
+cat << 'EOF' > /app/docker-compose.yml
+version: '3.8'
+
+services:
+  # Django Instances
+  django:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 EngageX_Streaming.asgi:application"
+    environment:
+      - APP_PORT=8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-2:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8001
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8001 EngageX_Streaming.asgi:application"
+    ports:
+      - "8001:8001"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-3:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8002
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8002 EngageX_Streaming.asgi:application"
+    ports:
+      - "8002:8002"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-4:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8003
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8003 EngageX_Streaming.asgi:application"
+    ports:
+      - "8003:8003"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-5:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8004
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8004 EngageX_Streaming.asgi:application"
+    ports:
+      - "8004:8004"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-6:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8005
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8005 EngageX_Streaming.asgi:application"
+    ports:
+      - "8005:8005"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-7:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8006
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8006 EngageX_Streaming.asgi:application"
+    ports:
+      - "8006:8006"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-8:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8007
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8007 EngageX_Streaming.asgi:application"
+    ports:
+      - "8007:8007"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-9:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8008
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8008 EngageX_Streaming.asgi:application"
+    ports:
+      - "8008:8008"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-10:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8009
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8009 EngageX_Streaming.asgi:application"
+    ports:
+      - "8009:8009"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-11:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8010
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8010 EngageX_Streaming.asgi:application"
+    ports:
+      - "8010:8010"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-12:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8011
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8011 EngageX_Streaming.asgi:application"
+    ports:
+      - "8011:8011"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-13:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8012
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8012 EngageX_Streaming.asgi:application"
+    ports:
+      - "8012:8012"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-14:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8013
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8013 EngageX_Streaming.asgi:application"
+    ports:
+      - "8013:8013"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  django-15:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    environment:
+      - APP_PORT=8014
+    command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8014 EngageX_Streaming.asgi:application"
+    ports:
+      - "8014:8014"
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+
+  # Celery Workers
+  celery:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-2:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-3:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-4:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-5:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-6:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-7:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-8:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-9:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+  celery-10:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
+    healthcheck:
+      test: ["CMD", "./check-celery.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - tmp-data:/tmp
+    env_file:
+      - .env
+      
+  celery-flower:
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
+    command: celery -A EngageX_Streaming flower --loglevel=info
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+
+volumes:
+  tmp-data:
+EOF
+
+echo "Logging into AWS ECR..."
 aws ecr get-login-password --region us-west-1 | docker login --username AWS --password-stdin 266735827053.dkr.ecr.us-west-1.amazonaws.com
 
-# Set up application directory
-mkdir -p /home/ubuntu/app
-cd /home/ubuntu/app
-
-# the repository is already cloned or add your ssh key to github if its new server and clone the repo
-#so we just need to pull the latest changes 
-git pull origin main
-# Start the app
+echo "Pulling latest Docker images..."
 docker-compose pull
+
+echo "Starting containers..."
 docker-compose up -d --remove-orphans
+EOF
 
 echo "Startup completed successfully!"
-# Clean up apt cache
-apt clean
