@@ -52,7 +52,7 @@ from .tasks import (
     transcribe_audio_task,
     analyze_results_task,
     ai_audience_question_task,
-    compile_session_video_task
+    # compile_session_video_task
 )
 from botocore.config import Config
 
@@ -190,10 +190,8 @@ class LiveSessionConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         print(f"WS: Client disconnected for Session ID: {self.session_id}. Cleaning up...")
 
-        # Trigger video compilation as a background task
-        if self.session_id:
-            print(f"WS: Triggering video compilation celery task for session {self.session_id}")
-            compile_session_video_task.delay(self.session_id, self.user_id).get(timeout=300)
+        # Removed: Trigger video compilation as a background task
+        # The video compilation will now be triggered via a dedicated endpoint.
 
         # Attempt to wait for background chunk save tasks to finish gracefully
         print(f"WS: Waiting for {len(self.background_chunk_save_tasks)} pending background save tasks...")

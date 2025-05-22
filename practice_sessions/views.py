@@ -65,6 +65,7 @@ from .serializers import (
     SessionReportSerializer,
     SlidePreviewSerializer
 )
+from .tasks import compile_session_video_task
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -526,6 +527,43 @@ class PracticeSessionViewSet(viewsets.ModelViewSet):
         for chunk in chunks:
             chunk.video_file = None
             chunk.save(update_fields=['video_file'])
+
+    @action(detail=True, methods=['post'], url_path='queue-video-compilation')
+    def queue_video_compilation(self, request, pk=None):
+        """
+        Queues a Celery task for video compilation for a specific practice session.
+        Returns the task ID to the frontend for status tracking.
+        """
+        try:
+            session = get_object_or_404(PracticeSession, pk=pk)
+
+            # Permission check: Only the session owner or an admin can trigger compilation
+            if session.user != request.user and not (hasattr(request.user, 'user_profile') and request.user.user_profile.is_admin()):
+                raise PermissionDenied("You do not have permission to queue video compilation for this session.")
+
+            logger.info(f"Queuing video compilation for session {session.id} by user {request.user.id}")
+
+            # Queue the Celery task
+            # .delay() sends the task to the Celery broker immediately
+            task_result = compile_session_video_task.delay(session.id, request.user.id)
+
+            return Response(
+                {
+                    "message": "Video compilation has been queued.",
+                    "task_id": task_result.id, # Return the Celery task ID for potential advanced tracking
+                    "session_id": session.id
+                },
+                status=status.HTTP_202_ACCEPTED # 202 Accepted means the request has been accepted for processing
+            )
+        except PermissionDenied as e:
+            logger.warning(f"Permission denied for user {request.user.id} to queue video compilation for session {pk}: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e: # Catch-all for unexpected errors
+            logger.exception(f"Error queuing video compilation for session {pk}: {e}")
+            return Response(
+                {"error": "An internal server error occurred while queuing video compilation.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class SessionDashboardView(APIView):
