@@ -122,13 +122,17 @@ jobs:
       - name: Deploy Code
         shell: bash
         run: |
-          # SSH into the EC2 instance and deploy
-          ssh -o StrictHostKeyChecking=no -i ~/ubuntu-ssh.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_PUBLIC_DNS }} << 'EOF'
-          cd /home/${{ secrets.EC2_USER }}/app/
-          aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
-          docker-compose pull
-          docker-compose up -d --remove-orphans
-          docker system prune -a -f
-          EOF
-          echo "Deployment completed!"
+            ssh -o StrictHostKeyChecking=no -i ~/ubuntu-ssh.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_PUBLIC_DNS }} << 'EOF'
+            set -e
+            cd /app
+
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
+
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+            docker system prune -a -f
+            EOF
+
+            echo "Deployment completed!"
+
           
