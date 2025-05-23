@@ -769,13 +769,17 @@ class SessionDashboardView(APIView):
             # performamce analytics
             print(latest_session_chunk)
             for chunk in latest_session_chunk:
+                impact = chunk.impact if chunk.impact not in [None, 0] else 50
+                trigger_response = chunk.trigger_response if chunk.trigger_response not in [None, 0] else 40
+                conviction = chunk.conviction if chunk.conviction not in [None, 0] else 60
+            
                 performance_analytics_over_time.append({
                     "chunk_number": chunk.chunk_number if chunk.chunk_number is not None else 0,
                     "start_time": chunk.chunk.start_time if chunk.chunk.start_time is not None else 0,
                     "end_time": chunk.chunk.end_time if chunk.chunk.end_time is not None else 0,
-                    "impact": chunk.impact if chunk.impact is not None else 50,  # Compensate for missing chunks on graph
-                    "trigger_response": chunk.trigger_response if chunk.trigger_response is not None else 40,  # Compensate for missing chunks on graph
-                    "conviction": chunk.conviction if chunk.conviction is not None else 60,  # Compensate for missing chunks on graph
+                    "impact": impact,
+                    "trigger_response": trigger_response,
+                    "conviction": conviction,
                 })
 
             data = {
@@ -1178,13 +1182,17 @@ class SessionReportView(APIView):
             print(company)
 
             for chunk in latest_session_chunk:
+                impact = chunk.impact if chunk.impact not in [None, 0] else 50
+                trigger_response = chunk.trigger_response if chunk.trigger_response not in [None, 0] else 40
+                conviction = chunk.conviction if chunk.conviction not in [None, 0] else 60
+            
                 performance_analytics_over_time.append({
                     "chunk_number": chunk.chunk_number if chunk.chunk_number is not None else 0,
                     "start_time": chunk.chunk.start_time if chunk.chunk.start_time is not None else 0,
                     "end_time": chunk.chunk.end_time if chunk.chunk.end_time is not None else 0,
-                    "impact": chunk.impact if chunk.impact is not None else 50, # Compensate for missing chunks on graph
-                    "trigger_response": chunk.trigger_response if chunk.trigger_response is not None else 40,  # Compensate for missing chunks on graph
-                    "conviction": chunk.conviction if chunk.conviction is not None else 60,  # Compensate for missing chunks on graph
+                    "impact": impact,
+                    "trigger_response": trigger_response,
+                    "conviction": conviction,
                 })
 
             # Combine both sets of data in the response
