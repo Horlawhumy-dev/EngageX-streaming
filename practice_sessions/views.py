@@ -1053,11 +1053,8 @@ class SessionReportView(APIView):
     def generate_full_summary(self, session_id, metrics_string):
         """Creates a cohesive summary for Strengths, Improvements, and Feedback using OpenAI."""
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
         goals = PracticeSession.objects.filter(id=session_id).values_list("goals", flat=True).first()
-
         name = PracticeSession.objects.get(id=session_id).user.first_name
-        
         role = PracticeSession.objects.get(id=session_id).user.user_profile.user_intent
 
         print(f"Firstname: {name}. role: {role}")
@@ -1165,7 +1162,12 @@ class SessionReportView(APIView):
     def get(self, request, session_id):
         try:
             user = request.user
-            session = PracticeSession.objects.get(id=session_id, user=request.user)
+            # Check if the user is an admin or staff
+            if user.is_staff or user.is_superuser:
+                session = PracticeSession.objects.get(id=session_id)
+            else:
+                session = PracticeSession.objects.get(id=session_id, user=user)
+
             session_serializer = PracticeSessionSerializer(session)
 
             # Get related chunk sentiment analysis
@@ -1213,7 +1215,12 @@ class SessionReportView(APIView):
         company = user.user_profile.company
         print(company)
         try:
-            session = get_object_or_404(PracticeSession, id=session_id, user=request.user)
+            # Check if the user is an admin or staff for broader access
+            if user.is_staff or user.is_superuser:
+                session = get_object_or_404(PracticeSession, id=session_id)
+            else:
+                session = get_object_or_404(PracticeSession, id=session_id, user=user)
+
             print(f"Session found: {session.session_name}")
 
             # --- Update Duration ---
@@ -1433,7 +1440,8 @@ class SessionReportView(APIView):
                     "body_language": round(session.body_language or 0),
                     "transformative_communication": round(session.transformative_communication or 0),
                     "structure_and_clarity": round(session.structure_and_clarity or 0),
-                    "language_and_word_choice": round(session.language_and_word_choice or 0),
+                    "language_and_word_choice": round(
+                        session.language_and_word_choice if session.language_and_word_choice is not None else 0),
                 },
                 "full_summary": {
                     "Strength": session.strength,
@@ -1462,7 +1470,6 @@ class SessionReportView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-import  math
 class PerformanceAnalyticsView(APIView):
     def get(self, request):
         user = request.user
