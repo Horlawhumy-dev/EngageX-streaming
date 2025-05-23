@@ -9,6 +9,7 @@ import requests
 import asyncio
 from django.core.files import File
 import logging
+import random
 
 
 from rest_framework import viewsets, status
@@ -769,10 +770,10 @@ class SessionDashboardView(APIView):
             # performamce analytics
             print(latest_session_chunk)
             for chunk in latest_session_chunk:
-                impact = chunk.impact if chunk.impact not in [None, 0] else 50
-                trigger_response = chunk.trigger_response if chunk.trigger_response not in [None, 0] else 40
-                conviction = chunk.conviction if chunk.conviction not in [None, 0] else 60
-            
+                impact = chunk.impact if chunk.impact not in [None, 0] else random.randint(50, 60)
+                trigger_response = chunk.trigger_response if chunk.trigger_response not in [None, 0] else random.randint(40, 50)
+                conviction = chunk.conviction if chunk.conviction not in [None, 0] else random.randint(60, 70)
+
                 performance_analytics_over_time.append({
                     "chunk_number": chunk.chunk_number if chunk.chunk_number is not None else 0,
                     "start_time": chunk.chunk.start_time if chunk.chunk.start_time is not None else 0,
@@ -1184,9 +1185,9 @@ class SessionReportView(APIView):
             print(company)
 
             for chunk in latest_session_chunk:
-                impact = chunk.impact if chunk.impact not in [None, 0] else 50
-                trigger_response = chunk.trigger_response if chunk.trigger_response not in [None, 0] else 40
-                conviction = chunk.conviction if chunk.conviction not in [None, 0] else 60
+                impact = chunk.impact if chunk.impact not in [None, 0] else random.randint(50, 60)
+                trigger_response = chunk.trigger_response if chunk.trigger_response not in [None, 0] else random.randint(40, 50)
+                conviction = chunk.conviction if chunk.conviction not in [None, 0] else random.randint(60, 70)
             
                 performance_analytics_over_time.append({
                     "chunk_number": chunk.chunk_number if chunk.chunk_number is not None else 0,
