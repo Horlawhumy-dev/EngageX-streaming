@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
@@ -428,6 +428,528 @@ document.getElementById("reportContainer").style.display = "none";
 document.getElementById("realtimeFeedbackArea").textContent = "";
 document.getElementById("emotionArea").textContent = "";
 
+</script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Practice Session Report</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; margin: 20px;}
+        #videoPreview { width: 100%; max-width: 600px; display: block; margin-bottom: 20px; border: 1px solid #ccc;}
+        button { padding: 10px 15px; margin-right: 10px; cursor: pointer;}
+        #reportContainer { margin-top:30px; border:1px solid #ccc; padding:20px; border-radius:8px; background:#f9f9f9; display:none;}
+        #reportContainer h3, #reportContainer h4 { color:#333; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:15px;}
+        .score-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:15px; margin-bottom:20px;}
+        .score-item { background:#fff; padding:15px; border-radius:5px; border:1px solid #ddd;}
+        .score-item strong { display: block; margin-bottom:5px; color:#555;}
+        .summary-section { margin-bottom:20px;}
+        .summary-section p { white-space: pre-wrap;}
+        .compiled-video { margin-top:20px; font-size:1.1em;}
+        #realtimeFeedbackArea {font-size:1.1em; color:teal; margin-top:12px;}
+        #emotionArea {font-size:1em; color:#666; margin-top:10px;}
+    </style>
+</head>
+<body>
+<h2>Practice Session</h2>
+<video id="videoPreview" autoplay muted></video>
+<div>
+    <label for="roomSelect">Choose Room:</label>
+    <select id="roomSelect">
+        <option value="conference_room">Conference Room</option>
+        <option value="board_room_1">Board Room 1</option>
+        <option value="board_room_2">Board Room 2</option>
+    </select>
+    <label for="aiQuestionToggle">Enable AI Audience Questions:</label>
+    <input type="checkbox" id="aiQuestionToggle" checked>
+    <button id="startBtn">Start Recording</button>
+    <button id="stopBtn" disabled>Stop Recording</button>
+
+    <div style="margin-top: 15px;">
+        <label for="audienceQuestionField"><b>Send Audience Question:</b></label>
+        <input type="text" id="audienceQuestionField" placeholder="Type question here..." style="width:300px;">
+        <button id="audienceQuestionSendBtn" type="button">Send Question</button>
+    </div>
+    <div id="realtimeFeedbackArea"></div>
+    <div id="emotionArea"></div>
+</div>
+<p id="status">Status: Waiting...</p>
+
+<div id="reportContainer">
+    <h3>Session Report</h3>
+    <div id="sessionInfo">
+        <h4>Session Details:</h4>
+        <p><strong>Session ID:</strong> <span id="reportSessionId"></span></p>
+        <p><strong>Session Name:</strong> <span id="reportSessionName"></span></p>
+        <p><strong>Duration:</strong> <span id="reportDuration"></span></p>
+        <p><strong>Virtual Environment:</strong> <span id="reportRoom"></span></p>
+    </div>
+    <div id="aggregatedScores">
+        <h4>Aggregated Scores:</h4>
+        <div class="score-grid" id="aggregatedScoresGrid"></div>
+    </div>
+    <div id="derivedScores">
+        <h4>Derived Scores:</h4>
+        <div class="score-grid" id="derivedScoresGrid"></div>
+    </div>
+    <div id="fullSummary">
+        <h4>Summary Feedback:</h4>
+        <div class="summary-section">
+            <strong>Strength:</strong>
+            <p id="summaryStrength"></p>
+        </div>
+        <div class="summary-section">
+            <strong>Area of Improvement:</strong>
+            <p id="summaryImprovement"></p>
+        </div>
+        <div class="summary-section">
+            <strong>General Feedback:</strong>
+            <p id="summaryGeneral"></p>
+        </div>
+        <div class="summary-section">
+            <strong>Gestures Percentage:</strong>
+            <p id="summaryGestures"></p>
+        </div>
+    </div>
+    <div style="margin-top: 20px;">
+        <button id="compileVideoBtn" disabled>Compile Session Video</button>
+        <span id="compileStatus"></span>
+    </div>
+    <div class="compiled-video" id="compiledVideoUrlText">
+        <strong>Compiled Video URL:</strong> <span id="videoUrlPlaceholder">N/A</span>
+    </div>
+</div>
+
+<script>
+// const API_BASE_URL = "https://api.engagexai.io";
+const API_BASE_URL = "http://localhost:8001"; // For local testing
+const API_TOKEN = "cbb104b86b94b2116b6b542e496454dea3940039";
+let sessionId;
+let stream = null;
+let chunkTimer = null, currentRecorder = null;
+let isRecording = false;
+let socket;
+let startTime;
+
+let selectedRoom = document.getElementById('roomSelect').value;
+let aiQuestionsEnabled = document.getElementById('aiQuestionToggle').checked;
+
+document.getElementById('roomSelect').addEventListener('change', e => selectedRoom = e.target.value);
+document.getElementById('aiQuestionToggle').addEventListener('change', e => aiQuestionsEnabled = e.target.checked);
+
+async function createPracticeSession() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/sessions/sessions/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${API_TOKEN}`
+            },
+            body: JSON.stringify({
+                session_name: "Live Practice Session",
+                session_type: "public",
+                virtual_environment: selectedRoom,
+                goals: ["I want to be more captivating"]
+            })
+        });
+        if (!response.ok) {
+            console.error('Failed to create practice session:', response.status);
+            let errorText = await response.text();
+            console.error('Error details:', errorText);
+            document.getElementById("status").textContent = `Status: Error creating session (${response.status}).`;
+            return null;
+        }
+        const data = await response.json();
+        sessionId = data.id;
+        console.log('Created Practice Session with ID:', sessionId, 'in Room:', data.virtual_environment);
+        return sessionId;
+    } catch (error) {
+        console.error('Error creating practice session:', error);
+        document.getElementById("status").textContent = "Status: Error creating session.";
+        return null;
+    }
+}
+
+function arrayBufferToBase64(buffer) {
+    let binary = '', bytes = new Uint8Array(buffer);
+    for (let b of bytes) binary += String.fromCharCode(b);
+    return window.btoa(binary);
+}
+
+function startNewRecorder() {
+    let mimeType = '';
+    if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9,opus')) mimeType = 'video/webm; codecs=vp9,opus';
+    else if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8,opus')) mimeType = 'video/webm; codecs=vp8,opus';
+    else if (MediaRecorder.isTypeSupported('video/webm')) mimeType = 'video/webm';
+
+    if (!mimeType) {
+        console.error("No supported video/webm mime type found.");
+        document.getElementById("status").textContent = "Status: Browser does not support video recording.";
+        stopRecordingAndCleanup();
+        return;
+    }
+
+    currentRecorder = new MediaRecorder(stream, {mimeType});
+    let recordedChunks = [];
+    currentRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+    };
+    currentRecorder.onstop = () => {
+        if (recordedChunks.length > 0 && socket && socket.readyState === WebSocket.OPEN && isRecording) {
+            new Blob(recordedChunks, {type: mimeType}).arrayBuffer().then(buffer => {
+                const base64Data = arrayBufferToBase64(buffer);
+                socket.send(JSON.stringify({
+                    type: "media_chunk", // Changed "media" to "media_chunk" for consistency with consumers.py
+                    media: base64Data, // Changed "data" to "media"
+                    chunk_number: Date.now(), // Use a unique ID for chunk number
+                    session_id: sessionId
+                }));
+                console.log(`Sent finalized media chunk (size: ${buffer.byteLength} bytes) to server.`);
+            });
+        }
+        recordedChunks = [];
+        if (isRecording) {
+            console.log("Starting next recorder...");
+            startNewRecorder();
+        }
+        else {
+            console.log("Recording fully stopped.");
+            // No longer automatically trigger report here.
+            // The user will explicitly trigger it via the 'Compile Video' button.
+            // document.getElementById("status").textContent = "Status: Recording stopped. Generate report when ready.";
+        }
+    };
+    currentRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event.error);
+        document.getElementById("status").textContent = `Status: Recording error: ${event.error.name}`;
+        stopRecordingAndCleanup();
+    };
+    try {
+        currentRecorder.start();
+        console.log("Recorder started.");
+        chunkTimer = setTimeout(() => {
+            console.log("Chunk duration reached, stopping recorder.");
+            if (currentRecorder && currentRecorder.state === "recording") currentRecorder.stop();
+        }, 7000);
+    } catch(err) {
+        console.error("Error starting recorder:", err);
+        document.getElementById("status").textContent = "Status: Failed to start recording.";
+        stopRecordingAndCleanup();
+    }
+}
+
+document.getElementById("startBtn").addEventListener("click", async () => {
+    document.getElementById("reportContainer").style.display = "none";
+    document.getElementById("status").textContent = "Status: Creating session...";
+    document.getElementById("compileVideoBtn").disabled = true; // Disable compile button
+    document.getElementById("videoUrlPlaceholder").textContent = "N/A"; // Reset URL
+    document.getElementById("compileStatus").textContent = ""; // Clear compile status
+
+    const sessionIdResult = await createPracticeSession();
+    if (!sessionIdResult) { document.getElementById("status").textContent = "Status: Failed to start session."; return; }
+    document.getElementById("status").textContent = "Status: Requesting camera/mic...";
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        document.getElementById("videoPreview").srcObject = stream;
+        startTime = new Date();
+        let wsProtocol = API_BASE_URL.startsWith("https") ? "wss" : "ws";
+        let wsUrl = `${wsProtocol}://${API_BASE_URL.split('://')[1]}/ws/socket_server/?session_id=${sessionId}&room_name=${selectedRoom}&ai_questions_enabled=${aiQuestionsEnabled}`;
+        console.log("Connecting to WebSocket:", wsUrl);
+        socket = new WebSocket(wsUrl);
+        socket.binaryType = "arraybuffer";
+        socket.onopen = () => {
+            console.log("WebSocket Connected with Session ID:", sessionId, "Room:", selectedRoom, "AI Questions Enabled:", aiQuestionsEnabled);
+            document.getElementById("status").textContent = "Status: Recording...";
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = false;
+            isRecording = true;
+            startNewRecorder();
+        };
+        socket.onmessage = (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                // Handle different message types from the server
+                if (data.type === "realtime_feedback") {
+                    console.log("Real-time Feedback:", data.feedback);
+                    document.getElementById("realtimeFeedbackArea").textContent = data.feedback || '';
+                }
+                else if (data.type === "full_analysis_update") {
+                    console.log("Chunk Full Analysis Update:", data.analysis);
+                }
+                else if (data.type === "window_emotion_update") {
+                    console.log("Window Emotion Update:", data.emotion, data.emotion_s3_url);
+                    document.getElementById("emotionArea").textContent = data.emotion ? "Emotion: " + data.emotion : "";
+                }
+                else if (data.type === "audience_question") {
+                    console.log("Received AI Audience Question:", data.question);
+                    alert("AI Audience Question: " + data.question);
+                }
+                else {
+                    console.log("Server message:", e.data);
+                }
+            } catch (error) { console.error("Error parsing or handling WebSocket message:", error);}
+        };
+        socket.onerror = (error) => {
+            console.error("WebSocket Error:", error);
+            document.getElementById("status").textContent = "Status: WebSocket error.";
+            stopRecordingAndCleanup();
+        };
+        socket.onclose = (event) => {
+            console.log("WebSocket Disconnected", event.code, event.reason);
+            if (!event.wasClean) {
+                document.getElementById("status").textContent = "Status: WebSocket connection lost.";
+                stopRecordingAndCleanup(false);
+            }
+        };
+    } catch (error) {
+        console.error("Camera/Mic Access Error:", error);
+        document.getElementById("status").textContent = "Status: Camera/mic access denied or error.";
+        stopRecordingAndCleanup(false);
+    }
+});
+
+function stopRecordingAndCleanup(triggerReportOnStop = true) {
+    console.log("Stopping recording and cleaning up.");
+    isRecording = false;
+    if (chunkTimer) { clearTimeout(chunkTimer); chunkTimer = null; }
+    if (currentRecorder && currentRecorder.state !== "inactive") {
+        console.log("Stopping MediaRecorder."); currentRecorder.stop();
+    }
+    // The previous automatic triggerReport has been removed
+    // We now enable the compile video button after recording stops.
+    if (!isRecording && sessionId) {
+        document.getElementById("status").textContent = "Status: Recording stopped. Ready for report and video compilation.";
+        document.getElementById("compileVideoBtn").disabled = false; // Enable compile button
+        // Display report section immediately if desired, even without video
+        document.getElementById("reportContainer").style.display = "block";
+        // Fetch and display initial report data (without waiting for video)
+        getAndRenderReport(sessionId);
+    }
+
+    if (socket && socket.readyState === WebSocket.OPEN) { console.log("Closing WebSocket."); socket.close(1000, "Recording finished"); }
+    if (stream) { console.log("Stopping media tracks."); stream.getTracks().forEach(track => track.stop()); stream = null; }
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
+}
+
+document.getElementById("stopBtn").addEventListener("click", () => {
+    stopRecordingAndCleanup(true); // Argument doesn't really matter now
+});
+
+document.getElementById('audienceQuestionSendBtn').addEventListener('click', function () {
+    let qf = document.getElementById('audienceQuestionField');
+    let question = qf.value.trim();
+    if (!question) return alert("Please type a question before sending.");
+    if (!socket || socket.readyState !== WebSocket.OPEN) return alert("WebSocket is not connected. Start recording first.");
+    socket.send(JSON.stringify({ type: "user_question", question_text: question, session_id: sessionId })); // Corrected type and key name
+    qf.value = "";
+    alert("Question sent!");
+});
+
+// ---- NEW: Compile Video Button Logic ----
+document.getElementById('compileVideoBtn').addEventListener('click', async () => {
+    if (!sessionId) {
+        document.getElementById("compileStatus").textContent = "Error: No session ID available to compile.";
+        return;
+    }
+
+    document.getElementById("compileVideoBtn").disabled = true;
+    document.getElementById("compileStatus").textContent = "Requesting video compilation...";
+    document.getElementById("videoUrlPlaceholder").textContent = "Compiling...";
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/sessions/sessions/${sessionId}/queue-video-compilation/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${API_TOKEN}`
+            },
+            body: JSON.stringify({}) // Empty body as per backend endpoint
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to queue video compilation:', response.status, errorData);
+            document.getElementById("compileStatus").textContent = `Error: Failed to queue compilation (${response.status}): ${errorData.error || response.statusText}`;
+            document.getElementById("videoUrlPlaceholder").textContent = "Failed to queue";
+            document.getElementById("compileVideoBtn").disabled = false; // Re-enable for retry
+            return;
+        }
+
+        const data = await response.json();
+        console.log('Video compilation queued:', data);
+        document.getElementById("compileStatus").textContent = `Compilation queued (Task ID: ${data.task_id}). Polling for video...`;
+        
+        // Start polling for the video URL specifically
+        startVideoUrlPolling(sessionId);
+
+    } catch (error) {
+        console.error('Error queuing video compilation:', error);
+        document.getElementById("compileStatus").textContent = `Error: Network issue or unexpected error.`;
+        document.getElementById("videoUrlPlaceholder").textContent = "Error";
+        document.getElementById("compileVideoBtn").disabled = false; // Re-enable for retry
+    }
+});
+
+
+// ---- NEW: Polling for Compiled Video URL ----
+function startVideoUrlPolling(sessionId) {
+    let attempts = 0;
+    const maxAttempts = 60; // Poll for up to 5 minutes (60 attempts * 5 seconds)
+    const pollingInterval = 5000; // 5 seconds
+
+    function pollForVideo() {
+        attempts++;
+        if (attempts > maxAttempts) {
+            document.getElementById("compileStatus").textContent = "Compilation timed out. Video may not be available.";
+            document.getElementById("videoUrlPlaceholder").textContent = "Timed out.";
+            document.getElementById("compileVideoBtn").disabled = false; // Allow retry
+            return;
+        }
+
+        document.getElementById("compileStatus").textContent = `Compiling... Attempt ${attempts}/${maxAttempts}`;
+
+        fetch(`${API_BASE_URL}/sessions/sessions-report/${sessionId}/`, { // Fetch the report to get the URL
+            headers: {'Authorization': `Token ${API_TOKEN}`}
+        })
+        .then(resp => {
+            if (!resp.ok) {
+                console.warn(`Polling for video URL failed (${resp.status})`);
+                document.getElementById("compileStatus").textContent = `Polling error (${resp.status}). Retrying...`;
+                setTimeout(pollForVideo, pollingInterval);
+                return;
+            }
+            return resp.json();
+        })
+        .then(reportData => {
+            if (reportData && reportData.compiled_video_url) {
+                document.getElementById("videoUrlPlaceholder").innerHTML =
+                    `<a href="${reportData.compiled_video_url}" target="_blank">${reportData.compiled_video_url}</a>`;
+                document.getElementById("compileStatus").textContent = "Video compilation complete!";
+                // No need to disable compileVideoBtn here, as it's done once done.
+            } else {
+                // If compiled_video_url is null or not present, continue polling
+                document.getElementById("videoUrlPlaceholder").textContent = "Still compiling...";
+                setTimeout(pollForVideo, pollingInterval);
+            }
+        })
+        .catch(err => {
+            console.error("Polling for video URL error:", err);
+            document.getElementById("compileStatus").textContent = `Polling error: ${err.message}. Retrying...`;
+            setTimeout(pollForVideo, pollingInterval);
+        });
+    }
+
+    pollForVideo();
+}
+
+// ---- Original Report GET and Render (modified to fetch initially) ----
+async function getAndRenderReport(sessionId) {
+    if (!sessionId) {
+        document.getElementById("status").textContent = "Status: Cannot fetch report. Session not created.";
+        return;
+    }
+    document.getElementById("status").textContent = "Status: Fetching report...";
+    try {
+        const response = await fetch(`${API_BASE_URL}/sessions/sessions-report/${sessionId}/`, {
+            headers: {'Authorization': `Token ${API_TOKEN}`}
+        });
+        if (!response.ok) {
+            console.error(`Failed to fetch report (${response.status})`);
+            document.getElementById("status").textContent = `Status: Error fetching report (${response.status}).`;
+            return;
+        }
+        const reportData = await response.json();
+        console.log('📄 Fetched Session Report via GET:', reportData);
+        renderReportDetails(reportData); // Render detailed report
+        // Only update video URL status if it's already there
+        if (reportData.compiled_video_url) {
+             document.getElementById("videoUrlPlaceholder").innerHTML =
+                    `<a href="${reportData.compiled_video_url}" target="_blank">${reportData.compiled_video_url}</a>`;
+             document.getElementById("compileStatus").textContent = "Video already compiled.";
+        } else {
+             document.getElementById("videoUrlPlaceholder").textContent = "Not compiled yet.";
+             document.getElementById("compileStatus").textContent = "Click 'Compile Session Video' to generate.";
+        }
+        document.getElementById("status").textContent = "Status: Report loaded.";
+
+    } catch (e) {
+        console.error("Error fetching report:", e);
+        document.getElementById("status").textContent = "Status: Error fetching report.";
+    }
+}
+
+function renderReportDetails(reportData) {
+    document.getElementById("reportSessionId").textContent = reportData.session_id || "N/A";
+    document.getElementById("reportSessionName").textContent = reportData.session_name || "N/A";
+    document.getElementById("reportDuration").textContent = reportData.duration || 'N/A';
+    document.getElementById("reportRoom").textContent = reportData.virtual_environment || 'N/A';
+
+    // Aggregated Scores
+    const aggregatedKeys = {
+        volume: 'Volume', pitch_variability: 'Pitch Variability', pace: 'Pace', pauses: 'Pauses',
+        conviction: 'Conviction', clarity: 'Clarity', impact: 'Impact', brevity: 'Brevity',
+        trigger_response: 'Trigger Response', filler_words: 'Filler Words', grammar: 'Grammar',
+        posture: 'Posture', motion: 'Motion'
+    };
+    let agg = reportData.aggregated_scores || {}, grid = document.getElementById("aggregatedScoresGrid");
+    grid.innerHTML = '';
+    for (let k in aggregatedKeys) {
+        if (agg[k] !== undefined) {
+            let el = document.createElement('div'); el.className = "score-item";
+            el.innerHTML = `<strong>${aggregatedKeys[k]}:</strong> ${agg[k]}`;
+            grid.appendChild(el);
+        }
+    }
+
+    // Derived Scores
+    const derivedKeys = {
+        audience_engagement: 'Audience Engagement',
+        overall_captured_impact: 'Overall Captured Impact',
+        vocal_variety: 'Vocal Variety',
+        emotional_impact: 'Emotional Impact',
+        body_language: 'Body Language',
+        transformative_communication: 'Transformative Communication',
+        structure_and_clarity: 'Structure and Clarity',
+        language_and_word_choice: 'Language and Word Choice'
+    };
+    let derived = reportData.derived_scores || {}, derivedGrid = document.getElementById("derivedScoresGrid");
+    derivedGrid.innerHTML = '';
+    for (let k in derivedKeys) {
+        if (derived[k] !== undefined) {
+            let el = document.createElement('div'); el.className = "score-item";
+            el.innerHTML = `<strong>${derivedKeys[k]}:</strong> ${derived[k]}`;
+            derivedGrid.appendChild(el);
+        }
+    }
+
+    // Summary
+    let summary = reportData.full_summary || {};
+    document.getElementById("summaryStrength").innerHTML =
+        (summary["Strength"] || []).map(item => `• ${item}`).join("<br>");
+    document.getElementById("summaryImprovement").innerHTML =
+        (summary["Area of Improvement"] || []).map(item => `• ${item}`).join("<br>");
+    document.getElementById("summaryGeneral").textContent =
+        summary["General Feedback Summary"] || "N/A";
+    document.getElementById("summaryGestures").textContent =
+        ((reportData.gestures_percentage !== undefined && reportData.gestures_percentage !== null)
+             ? `${reportData.gestures_percentage}%` : "N/A");
+}
+
+
+// Initial UI state
+document.getElementById("stopBtn").disabled = true;
+document.getElementById("compileVideoBtn").disabled = true; // Disable compile button initially
+document.getElementById("reportContainer").style.display = "none";
+document.getElementById("realtimeFeedbackArea").textContent = "";
+document.getElementById("emotionArea").textContent = "";
+document.getElementById("videoUrlPlaceholder").textContent = "N/A"; // Initial state for video URL
+document.getElementById("compileStatus").textContent = ""; // Clear initial status message
 </script>
 </body>
 </html>

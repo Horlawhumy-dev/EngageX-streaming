@@ -117,19 +117,152 @@ def ai_audience_question_task(transcript):
     return ai_audience_question(transcript)
 
 
-@shared_task
-def compile_session_video_task(session_id, user_id):
+# @shared_task
+# def compile_session_video_task(session_id, user_id):
+#     async def _compile():
+#         """Background task to compile all chunks for a session."""
+#         print(f"WS: Starting video compilation for session {session_id} in background task.")
+#         temp_file_paths = []
+#         try:
+#             chunk_urls = await get_session_chunk_urls(session_id)
+#             if not chunk_urls:
+#                 print(f"WS: No chunk URLs found for session {session_id}. Skipping compilation.")
+#                 return
+
+#             print(f"WS: Downloading {len(chunk_urls)} chunks for session {session_id}.")
+#             downloaded_chunk_paths = []
+#             for i, url in enumerate(chunk_urls):
+#                 try:
+#                     parsed_url = urlparse(url)
+#                     hostname_parts = parsed_url.hostname.split('.') if parsed_url.hostname else []
+#                     extracted_bucket_name = hostname_parts[0] if hostname_parts else None
+#                     key_path = parsed_url.path.lstrip('/') if parsed_url.path else None
+#                     if extracted_bucket_name == BUCKET_NAME and key_path:
+#                         s3_key = key_path
+#                         print(f"WS: Extracted S3 key from URL {url}: {s3_key}")
+#                     else:
+#                         print(f"WS: Could not extract S3 key or bucket name from URL: {url}. Skipping.")
+#                         continue
+#                 except Exception as e:
+#                     print(f"WS: Error parsing URL {url}: {e}. Skipping.")
+#                     continue
+
+#                 temp_input_path = os.path.join(TEMP_MEDIA_ROOT, f"{session_id}_chunk_{i}.webm")
+#                 temp_file_paths.append(temp_input_path)
+#                 try:
+#                     await asyncio.to_thread(s3.download_file, BUCKET_NAME, s3_key, temp_input_path)
+#                     downloaded_chunk_paths.append(temp_input_path)
+#                     print(f"WS: Downloaded chunk {i+1}/{len(chunk_urls)} to {temp_input_path}")
+#                 except Exception as e:
+#                     print(f"WS: Error downloading chunk {i+1}: {e}")
+#                     continue
+
+#             if not downloaded_chunk_paths:
+#                 print(f"WS: No chunks were successfully downloaded for session {session_id}.")
+#                 return
+
+#             # === NEW STEP: Convert to MP4 ===
+#             converted_mp4_paths = []
+#             for i, input_path in enumerate(downloaded_chunk_paths):
+#                 mp4_path = input_path.replace(".webm", "_converted.mp4")
+#                 temp_file_paths.append(mp4_path)
+#                 command = [
+#                     "ffmpeg", "-y", "-i", input_path,
+#                     "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+#                     "-c:a", "aac",
+#                     mp4_path
+#                 ]
+#                 print(f"WS: Converting chunk {i+1} to MP4...")
+#                 process = await asyncio.to_thread(subprocess.run, command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#                 if process.returncode == 0:
+#                     converted_mp4_paths.append(mp4_path)
+#                     print(f"WS: Converted to {mp4_path}")
+#                 else:
+#                     print(f"WS: Conversion failed for {input_path}: {process.stderr.decode()}")
+
+#             if not converted_mp4_paths:
+#                 print(f"WS: No converted MP4 files to compile. Skipping.")
+#                 return
+
+#             # === Generate concat list file ===
+#             list_file_path = os.path.join(TEMP_MEDIA_ROOT, f"{session_id}_concat_list.txt")
+#             temp_file_paths.append(list_file_path)
+#             with open(list_file_path, 'w') as f:
+#                 for path in sorted(converted_mp4_paths, key=lambda p: int(re.search(r"_(\d+)", p).group(1))):
+#                     f.write(f"file '{path.replace(os.sep, '/')}'\n")
+#             print(f"WS: Created concat list file: {list_file_path}")
+
+#             # === Concatenate with FFmpeg ===
+#             compiled_video_filename = f"{session_id}_compiled.mp4"
+#             compiled_video_path = os.path.join(TEMP_MEDIA_ROOT, compiled_video_filename)
+#             temp_file_paths.append(compiled_video_path)
+#             ffmpeg_command = [
+#                 "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file_path,
+#                 "-c", "copy", compiled_video_path
+#             ]
+#             print(f"WS: Running FFmpeg compilation command: {' '.join(ffmpeg_command)}")
+#             process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#             stdout, stderr = await asyncio.to_thread(process.communicate)
+#             returncode = await asyncio.to_thread(lambda p: p.returncode, process)
+
+#             if returncode != 0:
+#                 print(f"WS: FFmpeg compilation error (code {returncode}) for session {session_id}: {stderr.decode()}")
+#                 return
+#             else:
+#                 print(f"WS: Video compiled successfully to: {compiled_video_path}")
+
+#             # === Upload to S3 ===
+#             print(f"WS: Uploading compiled video to S3 for session {session_id}.")
+#             if not user_id:
+#                 print(f"WS: Error: User ID not available. Cannot upload.")
+#                 return
+#             compiled_s3_key = f"{BASE_FOLDER}{user_id}/{session_id}/{compiled_video_filename}"
+#             await asyncio.to_thread(s3.upload_file, compiled_video_path, BUCKET_NAME, compiled_s3_key)
+
+#             region_name = os.environ.get('AWS_S3_REGION_NAME', os.environ.get('AWS_REGION', 'us-east-1'))
+#             compiled_s3_url = f"https://{BUCKET_NAME}.s3.{region_name}.amazonaws.com/{compiled_s3_key}"
+
+#             if compiled_s3_url:
+#                 await update_session_with_video_url(session_id, compiled_s3_url)
+#                 print(f"WS: Compilation and upload complete: {compiled_s3_url}")
+#             else:
+#                 print("WS: Failed to construct S3 URL")
+
+#         except Exception as e:
+#             print(f"WS: An error occurred during video compilation for session {session_id}: {e}")
+#             traceback.print_exc()
+#         finally:
+#             print(f"WS: Cleaning up temporary files for session {session_id}.")
+#             for file_path in temp_file_paths:
+#                 if os.path.exists(file_path):
+#                     try:
+#                         os.remove(file_path)
+#                         print(f"WS: Removed temporary file: {file_path}")
+#                     except Exception as e:
+#                         print(f"WS: Error removing file {file_path}: {e}")
+    
+#     async_to_sync(_compile)()
+
+
+@shared_task(bind=True)
+def compile_session_video_task(self, session_id, user_id):
     async def _compile():
-        """Background task to compile all chunks for a session."""
-        print(f"WS: Starting video compilation for session {session_id} in background task.")
+        """
+        Background task to compile all video chunks for a session.
+        Sets PracticeSession.compiled_video_url upon success, or None on failure.
+        """
+        print(f"Starting video compilation for session {session_id} (Celery Task ID: {self.request.id}).")
         temp_file_paths = []
         try:
+            # 1. Fetch chunk URLs
             chunk_urls = await get_session_chunk_urls(session_id)
             if not chunk_urls:
-                print(f"WS: No chunk URLs found for session {session_id}. Skipping compilation.")
+                print(f"No chunk URLs found for session {session_id}. Skipping compilation.")
+                await update_session_with_video_url(session_id, None) # Mark as failed/not compilable
                 return
 
-            print(f"WS: Downloading {len(chunk_urls)} chunks for session {session_id}.")
+            # 2. Download chunks from S3
+            print(f"Downloading {len(chunk_urls)} chunks for session {session_id}.")
             downloaded_chunk_paths = []
             for i, url in enumerate(chunk_urls):
                 try:
@@ -137,109 +270,126 @@ def compile_session_video_task(session_id, user_id):
                     hostname_parts = parsed_url.hostname.split('.') if parsed_url.hostname else []
                     extracted_bucket_name = hostname_parts[0] if hostname_parts else None
                     key_path = parsed_url.path.lstrip('/') if parsed_url.path else None
+
+                    # Validate bucket name and key path for security and correctness
                     if extracted_bucket_name == BUCKET_NAME and key_path:
                         s3_key = key_path
-                        print(f"WS: Extracted S3 key from URL {url}: {s3_key}")
                     else:
-                        print(f"WS: Could not extract S3 key or bucket name from URL: {url}. Skipping.")
+                        print(f"Could not extract valid S3 key or bucket name from URL: {url}. Skipping chunk.")
                         continue
+
                 except Exception as e:
-                    print(f"WS: Error parsing URL {url}: {e}. Skipping.")
+                    print(f"Error parsing URL {url}: {e}. Skipping chunk.", exc_info=True)
                     continue
 
                 temp_input_path = os.path.join(TEMP_MEDIA_ROOT, f"{session_id}_chunk_{i}.webm")
-                temp_file_paths.append(temp_input_path)
+                temp_file_paths.append(temp_input_path) # Add to cleanup list early
                 try:
                     await asyncio.to_thread(s3.download_file, BUCKET_NAME, s3_key, temp_input_path)
                     downloaded_chunk_paths.append(temp_input_path)
-                    print(f"WS: Downloaded chunk {i+1}/{len(chunk_urls)} to {temp_input_path}")
+                    print(f"Downloaded chunk {i+1}/{len(chunk_urls)} to {temp_input_path}")
                 except Exception as e:
-                    print(f"WS: Error downloading chunk {i+1}: {e}")
-                    continue
+                    print(f"Error downloading chunk {i+1} from {s3_key}: {e}", exc_info=True)
+                    continue # Try next chunk
 
             if not downloaded_chunk_paths:
-                print(f"WS: No chunks were successfully downloaded for session {session_id}.")
+                print(f"No chunks were successfully downloaded for session {session_id}.")
+                await update_session_with_video_url(session_id, None)
                 return
 
-            # === NEW STEP: Convert to MP4 ===
+            # 3. Convert WebM chunks to MP4 (if necessary)
             converted_mp4_paths = []
             for i, input_path in enumerate(downloaded_chunk_paths):
                 mp4_path = input_path.replace(".webm", "_converted.mp4")
                 temp_file_paths.append(mp4_path)
                 command = [
                     "ffmpeg", "-y", "-i", input_path,
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                    "-c:a", "aac",
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "23", # Video codec settings
+                    "-c:a", "aac", # Audio codec settings
                     mp4_path
                 ]
-                print(f"WS: Converting chunk {i+1} to MP4...")
+                print(f"Converting chunk {i+1} to MP4: {input_path} -> {mp4_path}")
                 process = await asyncio.to_thread(subprocess.run, command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if process.returncode == 0:
                     converted_mp4_paths.append(mp4_path)
-                    print(f"WS: Converted to {mp4_path}")
+                    print(f"Successfully converted chunk to {mp4_path}")
                 else:
-                    print(f"WS: Conversion failed for {input_path}: {process.stderr.decode()}")
+                    print(f"FFmpeg conversion failed for {input_path} (code {process.returncode}): {process.stderr.decode()}", exc_info=True)
 
             if not converted_mp4_paths:
-                print(f"WS: No converted MP4 files to compile. Skipping.")
+                print(f"No converted MP4 files available for session {session_id}. Cannot compile.")
+                await update_session_with_video_url(session_id, None)
                 return
 
-            # === Generate concat list file ===
+            # 4. Generate FFmpeg concat list file
             list_file_path = os.path.join(TEMP_MEDIA_ROOT, f"{session_id}_concat_list.txt")
             temp_file_paths.append(list_file_path)
             with open(list_file_path, 'w') as f:
+                # Ensure chunks are sorted by number (assuming _X in filename)
+                # Use forward slashes for FFmpeg compatibility across OS
                 for path in sorted(converted_mp4_paths, key=lambda p: int(re.search(r"_(\d+)", p).group(1))):
                     f.write(f"file '{path.replace(os.sep, '/')}'\n")
-            print(f"WS: Created concat list file: {list_file_path}")
+            print(f"Created concat list file: {list_file_path}")
 
-            # === Concatenate with FFmpeg ===
+            # 5. Concatenate videos with FFmpeg
             compiled_video_filename = f"{session_id}_compiled.mp4"
             compiled_video_path = os.path.join(TEMP_MEDIA_ROOT, compiled_video_filename)
             temp_file_paths.append(compiled_video_path)
             ffmpeg_command = [
                 "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file_path,
-                "-c", "copy", compiled_video_path
+                "-c", "copy", compiled_video_path # Copy stream without re-encoding if possible
             ]
-            print(f"WS: Running FFmpeg compilation command: {' '.join(ffmpeg_command)}")
+            print(f"Running FFmpeg concatenation command: {' '.join(ffmpeg_command)}")
             process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = await asyncio.to_thread(process.communicate)
-            returncode = await asyncio.to_thread(lambda p: p.returncode, process)
+            returncode = process.returncode
 
             if returncode != 0:
-                print(f"WS: FFmpeg compilation error (code {returncode}) for session {session_id}: {stderr.decode()}")
+                print(f"FFmpeg concatenation error (code {returncode}) for session {session_id}: {stderr.decode()}", exc_info=True)
+                await update_session_with_video_url(session_id, None) # Mark as failed
                 return
             else:
-                print(f"WS: Video compiled successfully to: {compiled_video_path}")
+                print(f"Video compiled successfully to: {compiled_video_path}")
 
-            # === Upload to S3 ===
-            print(f"WS: Uploading compiled video to S3 for session {session_id}.")
+            # 6. Upload compiled video to S3
             if not user_id:
-                print(f"WS: Error: User ID not available. Cannot upload.")
+                print(f"User ID not available for session {session_id}. Cannot upload compiled video to S3.")
+                await update_session_with_video_url(session_id, None)
                 return
+
             compiled_s3_key = f"{BASE_FOLDER}{user_id}/{session_id}/{compiled_video_filename}"
+            print(f"Uploading compiled video {compiled_video_path} to S3 bucket {BUCKET_NAME} with key {compiled_s3_key}.")
             await asyncio.to_thread(s3.upload_file, compiled_video_path, BUCKET_NAME, compiled_s3_key)
 
+            # Construct final S3 URL
             region_name = os.environ.get('AWS_S3_REGION_NAME', os.environ.get('AWS_REGION', 'us-east-1'))
             compiled_s3_url = f"https://{BUCKET_NAME}.s3.{region_name}.amazonaws.com/{compiled_s3_key}"
 
             if compiled_s3_url:
                 await update_session_with_video_url(session_id, compiled_s3_url)
-                print(f"WS: Compilation and upload complete: {compiled_s3_url}")
+                print(f"Compilation and upload complete for session {session_id}. URL: {compiled_s3_url}")
             else:
-                print("WS: Failed to construct S3 URL")
+                print("Failed to construct S3 URL after upload. Setting video URL to None.")
+                await update_session_with_video_url(session_id, None)
 
+        except PracticeSession.DoesNotExist:
+            print(f"PracticeSession with ID {session_id} not found during compilation task. Task cannot proceed.")
+            # No update needed if session doesn't exist, as there's no object to update
         except Exception as e:
-            print(f"WS: An error occurred during video compilation for session {session_id}: {e}")
-            traceback.print_exc()
+            print(f"An unexpected error occurred during video compilation for session {session_id}: {e}", exc_info=True)
+            await update_session_with_video_url(session_id, None) # Mark as failed on any unhandled exception
         finally:
-            print(f"WS: Cleaning up temporary files for session {session_id}.")
+            # 7. Clean up temporary files
+            print(f"Cleaning up temporary files for session {session_id}.")
             for file_path in temp_file_paths:
                 if os.path.exists(file_path):
                     try:
                         os.remove(file_path)
-                        print(f"WS: Removed temporary file: {file_path}")
-                    except Exception as e:
-                        print(f"WS: Error removing file {file_path}: {e}")
-    
-    async_to_sync(_compile)()
+                        print(f"Removed temporary file: {file_path}")
+                    except OSError as e:
+                        print(f"Error removing temporary file {file_path}: {e}", exc_info=True)
+                else:
+                    print(f"Temporary file not found during cleanup: {file_path}")
 
+    # Run the async compilation logic using async_to_sync for Celery
+    async_to_sync(_compile)()
