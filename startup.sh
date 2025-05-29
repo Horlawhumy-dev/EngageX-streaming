@@ -45,8 +45,8 @@ docker volume create app_tmp-data
 echo "Fixing permissions on docker volume data directory..."
 chown -R 1000:1000 /var/lib/docker/volumes/app_tmp-data/_data || echo "Warning: Could not change ownership of docker volume data"
 
-export AWS_ACCESS_KEY_ID=AKIAT4GVRXBWSSYMQH4K
-export AWS_SECRET_ACCESS_KEY=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
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
 export AWS_DEFAULT_REGION=us-west-1
 
 # Write deploy script for ubuntu user
