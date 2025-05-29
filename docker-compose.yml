@@ -1,8 +1,7 @@
 services:
   # Django Instances
   django:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: /bin/sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 EngageX_Streaming.asgi:application"
     environment:
@@ -14,8 +13,7 @@ services:
     env_file:
       - .env
   django-2:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8001
@@ -27,8 +25,7 @@ services:
     env_file:
       - .env
   django-3:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8002
@@ -40,8 +37,7 @@ services:
     env_file:
       - .env
   django-4:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8003
@@ -53,8 +49,7 @@ services:
     env_file:
       - .env
   django-5:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8004
@@ -66,8 +61,7 @@ services:
     env_file:
       - .env
   django-6:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8005
@@ -79,8 +73,7 @@ services:
     env_file:
       - .env
   django-7:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8006
@@ -92,8 +85,7 @@ services:
     env_file:
       - .env
   django-8:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8007
@@ -105,8 +97,7 @@ services:
     env_file:
       - .env
   django-9:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8008
@@ -118,8 +109,7 @@ services:
     env_file:
       - .env
   django-10:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8009
@@ -131,8 +121,7 @@ services:
     env_file:
       - .env
   django-11:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8010
@@ -144,8 +133,7 @@ services:
     env_file:
       - .env
   django-12:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8011
@@ -157,8 +145,7 @@ services:
     env_file:
       - .env
   django-13:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8012
@@ -170,8 +157,7 @@ services:
     env_file:
       - .env
   django-14:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8013
@@ -183,8 +169,7 @@ services:
     env_file:
       - .env
   django-15:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     environment:
       - APP_PORT=8014
@@ -198,8 +183,7 @@ services:
 
   # Celery Workers
   celery:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -212,8 +196,7 @@ services:
     env_file:
       - .env
   celery-2:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -226,8 +209,7 @@ services:
     env_file:
       - .env
   celery-3:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -240,8 +222,7 @@ services:
     env_file:
       - .env
   celery-4:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -254,8 +235,7 @@ services:
     env_file:
       - .env
   celery-5:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -268,8 +248,7 @@ services:
     env_file:
       - .env
   celery-6:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -282,8 +261,7 @@ services:
     env_file:
       - .env
   celery-7:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -296,8 +274,7 @@ services:
     env_file:
       - .env
   celery-8:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -310,8 +287,7 @@ services:
     env_file:
       - .env
   celery-9:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -324,8 +300,7 @@ services:
     env_file:
       - .env
   celery-10:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming worker --loglevel=info --pool=prefork
     healthcheck:
@@ -339,8 +314,7 @@ services:
       - .env
 
   celery-flower:
-    # image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest
-    build: . 
+    image: 266735827053.dkr.ecr.us-west-1.amazonaws.com/engagex-streaming:latest 
     restart: always
     command: celery -A EngageX_Streaming flower --loglevel=info
     ports:
