@@ -279,7 +279,7 @@ def compile_session_video_task(self, session_id, user_id):
                         continue
 
                 except Exception as e:
-                    print(f"Error parsing URL {url}: {e}. Skipping chunk.", exc_info=True)
+                    print(f"Error parsing URL {url}: {e}. Skipping chunk.")
                     continue
 
                 temp_input_path = os.path.join(TEMP_MEDIA_ROOT, f"{session_id}_chunk_{i}.webm")
@@ -289,7 +289,7 @@ def compile_session_video_task(self, session_id, user_id):
                     downloaded_chunk_paths.append(temp_input_path)
                     print(f"Downloaded chunk {i+1}/{len(chunk_urls)} to {temp_input_path}")
                 except Exception as e:
-                    print(f"Error downloading chunk {i+1} from {s3_key}: {e}", exc_info=True)
+                    print(f"Error downloading chunk {i+1} from {s3_key}: {e}")
                     continue # Try next chunk
 
             if not downloaded_chunk_paths:
@@ -314,7 +314,7 @@ def compile_session_video_task(self, session_id, user_id):
                     converted_mp4_paths.append(mp4_path)
                     print(f"Successfully converted chunk to {mp4_path}")
                 else:
-                    print(f"FFmpeg conversion failed for {input_path} (code {process.returncode}): {process.stderr.decode()}", exc_info=True)
+                    print(f"FFmpeg conversion failed for {input_path} (code {process.returncode}): {process.stderr.decode()}")
 
             if not converted_mp4_paths:
                 print(f"No converted MP4 files available for session {session_id}. Cannot compile.")
@@ -345,7 +345,7 @@ def compile_session_video_task(self, session_id, user_id):
             returncode = process.returncode
 
             if returncode != 0:
-                print(f"FFmpeg concatenation error (code {returncode}) for session {session_id}: {stderr.decode()}", exc_info=True)
+                print(f"FFmpeg concatenation error (code {returncode}) for session {session_id}: {stderr.decode()}")
                 await update_session_with_video_url(session_id, None) # Mark as failed
                 return
             else:
@@ -376,7 +376,7 @@ def compile_session_video_task(self, session_id, user_id):
             print(f"PracticeSession with ID {session_id} not found during compilation task. Task cannot proceed.")
             # No update needed if session doesn't exist, as there's no object to update
         except Exception as e:
-            print(f"An unexpected error occurred during video compilation for session {session_id}: {e}", exc_info=True)
+            print(f"An unexpected error occurred during video compilation for session {session_id}: {e}")
             await update_session_with_video_url(session_id, None) # Mark as failed on any unhandled exception
         finally:
             # 7. Clean up temporary files
@@ -387,7 +387,7 @@ def compile_session_video_task(self, session_id, user_id):
                         os.remove(file_path)
                         print(f"Removed temporary file: {file_path}")
                     except OSError as e:
-                        print(f"Error removing temporary file {file_path}: {e}", exc_info=True)
+                        print(f"Error removing temporary file {file_path}: {e}")
                 else:
                     print(f"Temporary file not found during cleanup: {file_path}")
 
