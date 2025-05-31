@@ -122,17 +122,32 @@ jobs:
       - name: Deploy Code
         shell: bash
         run: |
-            ssh -o StrictHostKeyChecking=no -i ~/ubuntu-ssh.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_PUBLIC_DNS }} << 'EOF'
-            set -e
-            cd /app
+          ssh -o StrictHostKeyChecking=no -i ~/ubuntu-ssh.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_PUBLIC_DNS }} << 'EOF'
+          set -e
+          cd /app
 
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
-            docker-compose down --remove-orphans     # 🛑 Gracefully stop existing containers
-            docker-compose pull                      # ⬇️ Pull latest images
-            docker-compose up -d --remove-orphans    # 🚀 Recreate containers cleanly
-            docker system prune -a -f                # 🧹 Clean up unused data
-            EOF
+          echo "▶ Logging into ECR..."
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
 
-            echo "Deployment completed!"
+          echo "🛑 Stopping all containers..."
+          docker ps -q | xargs -r docker stop
+
+          echo "🧹 Pruning orphaned containers and networks..."
+          docker container prune -f
+          docker network prune -f
+          docker volume prune -f
+
+          echo "⬇️ Pulling latest Docker images..."
+          docker-compose pull
+
+          echo "🚀 Starting services with docker-compose..."
+          docker-compose up -d --remove-orphans
+
+          echo "🧼 Cleaning up unused Docker images..."
+          docker image prune -a -f
+          EOF
+
+          echo "✅ Deployment completed!"
+
 
           
